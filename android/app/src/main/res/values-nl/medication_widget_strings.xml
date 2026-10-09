@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Medicijnherinneringen van Janan</string>
+    <string name="medication_widget_status_next_dose">VOLGENDE</string>
+    <string name="medication_widget_status_all_set">KLAAR</string>
+    <string name="medication_widget_status_overdue">TE LAAT</string>
+    <string name="medication_widget_status_snoozed">PAUZE</string>
+    <string name="medication_widget_status_soon">BIJNA</string>
+    <string name="medication_widget_countdown_hour">1u</string>
+    <string name="medication_widget_now">nu</string>
+    <string name="medication_widget_hour_unit">u</string>
+    <string name="medication_widget_minute_unit">m</string>
+    <string name="medication_widget_medicine">Medicijn</string>
+    <string name="medication_widget_no_dose_due">Geen dosis gepland</string>
+    <string name="medication_widget_no_medicine_dose_due">Geen medicijndosis gepland</string>
+    <string name="medication_widget_shows_all">Alle medicijnen</string>
+    <string name="medication_widget_configure_title">Startschermwidget</string>
+    <string name="medication_widget_configure_prompt">Welk medicijn moet deze widget tonen?</string>
+    <string name="medication_widget_configure_done">Widget toevoegen</string>
+</resources>

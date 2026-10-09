@@ -340,16 +340,23 @@ class MedicationReminderRuntime {
   /// Overdue follow-ups are scheduled ahead of time so Android can restore
   /// them after a cold boot. Alarms whose time already passed while the
   /// device was off are not repeated; only instants still in the future
-  /// are scheduled again the next time the app opens.
+  /// are scheduled again the next time the app opens. When
+  /// [notificationsEnabled] is false, pending alerts are cleared and nothing
+  /// new is scheduled.
   Future<void> syncSchedules(
     List<MedicationSchedule> schedules, {
     List<DoseOccurrence> snoozedOccurrences = const [],
     List<DoseOccurrence> openOccurrences = const [],
     int overdueReminderCount = 3,
     Duration overdueReminderInterval = const Duration(minutes: 10),
+    bool notificationsEnabled = true,
+    bool shiftMissedDoseTimes = false,
+    Duration missedDoseShiftLimit = const Duration(minutes: 60),
   }) async {
     await initialize();
     if (!_initialized) return;
+    await _notifications.cancelAll();
+    if (!notificationsEnabled) return;
     final android = _notifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -357,9 +364,19 @@ class MedicationReminderRuntime {
     final exact = Platform.isAndroid
         ? await android?.canScheduleExactNotifications() ?? false
         : true;
-    await _notifications.cancelAll();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final followUpFrom = <String, DateTime>{};
+    final doseTargets = shiftedDoseTargets(
+      openOccurrences,
+      now: now,
+      enabled: shiftMissedDoseTimes,
+      grace: missedDoseShiftLimit,
+      followUpFrom: followUpFrom,
+    );
+    final known = <String, DoseOccurrence>{
+      for (final occurrence in openOccurrences) occurrence.id: occurrence,
+    };
     for (final schedule in schedules.where((item) => item.active)) {
       for (var offset = 0; offset < 14; offset++) {
         final day = today.add(Duration(days: offset));
@@ -381,14 +398,21 @@ class MedicationReminderRuntime {
             minute ~/ 60,
             minute % 60,
           );
-          if (!localTime.isAfter(now)) continue;
+          final occurrenceId = medicationDoseOccurrenceId(
+            schedule.id!,
+            localTime,
+          );
+          if (doseClockAlarmClaimed(known[occurrenceId], now)) continue;
+          final target = doseTargets[occurrenceId] ?? localTime;
+          if (!target.isAfter(now)) continue;
           final scheduled = timezone.TZDateTime(
             timezone.local,
-            localTime.year,
-            localTime.month,
-            localTime.day,
-            localTime.hour,
-            localTime.minute,
+            target.year,
+            target.month,
+            target.day,
+            target.hour,
+            target.minute,
+            target.second,
           );
           await _scheduleReminder(
             id: _notificationId(_doseNotificationKey(schedule.id!, localTime)),
@@ -400,7 +424,9 @@ class MedicationReminderRuntime {
           );
           await _scheduleOverdueFollowUps(
             schedule: schedule,
-            scheduledAt: localTime,
+            scheduledAt: target,
+            keyAt: localTime,
+            bodyMinute: minute,
             now: now,
             count: overdueReminderCount,
             interval: overdueReminderInterval,
@@ -412,11 +438,57 @@ class MedicationReminderRuntime {
     for (final occurrence in openOccurrences) {
       final status = occurrence.statusAt(now);
       final scheduleId = occurrence.schedule.id;
+      final movedTo = doseTargets[occurrence.id];
       if (scheduleId == null || occurrence.scheduledAt.isAfter(now)) continue;
       if (status != 'pending' && status != 'unrecorded') continue;
+      final originalMinute =
+          occurrence.scheduledAt.hour * 60 + occurrence.scheduledAt.minute;
+      if (movedTo != null && movedTo.isAfter(now)) {
+        if (!earlierDoseAlarmMovedAhead(
+          scheduledAt: occurrence.scheduledAt,
+          movedTo: movedTo,
+          now: now,
+        )) {
+          continue;
+        }
+        await _scheduleReminder(
+          id: _notificationId(
+            _doseNotificationKey(scheduleId, occurrence.scheduledAt),
+          ),
+          schedule: occurrence.schedule,
+          minute: originalMinute,
+          when: timezone.TZDateTime(
+            timezone.local,
+            movedTo.year,
+            movedTo.month,
+            movedTo.day,
+            movedTo.hour,
+            movedTo.minute,
+            movedTo.second,
+          ),
+          exact: exact,
+          payload: scheduleId,
+        );
+        await _scheduleOverdueFollowUps(
+          schedule: occurrence.schedule,
+          scheduledAt: movedTo,
+          keyAt: occurrence.scheduledAt,
+          bodyMinute: originalMinute,
+          now: now,
+          count: overdueReminderCount,
+          interval: overdueReminderInterval,
+          exact: exact,
+        );
+        continue;
+      }
       await _scheduleOverdueFollowUps(
         schedule: occurrence.schedule,
-        scheduledAt: occurrence.scheduledAt,
+        scheduledAt:
+            followUpFrom[occurrence.id] ??
+            movedTo ??
+            occurrence.scheduledAt,
+        keyAt: occurrence.scheduledAt,
+        bodyMinute: originalMinute,
         now: now,
         count: overdueReminderCount,
         interval: overdueReminderInterval,
@@ -448,9 +520,17 @@ class MedicationReminderRuntime {
   }
 
   /// Schedules the follow-up alert for a snoozed dose.
-  Future<void> scheduleSnooze(DoseOccurrence occurrence, DateTime until) async {
+  Future<void> scheduleSnooze(
+    DoseOccurrence occurrence,
+    DateTime until, {
+    bool notificationsEnabled = true,
+  }) async {
     await initialize();
-    if (!_initialized || !until.isAfter(DateTime.now())) return;
+    if (!_initialized ||
+        !notificationsEnabled ||
+        !until.isAfter(DateTime.now())) {
+      return;
+    }
     final android = _notifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -507,12 +587,27 @@ class MedicationReminderRuntime {
     List<DoseOccurrence> occurrences, {
     bool showAll = true,
     List<MedicationSchedule> schedules = const [],
+    bool shiftMissedDoseTimes = false,
+    Duration missedDoseShiftLimit = const Duration(minutes: 60),
   }) async {
     if (!Platform.isAndroid) return;
     final now = DateTime.now();
+    final targets = shiftedDoseTargets(
+      occurrences,
+      now: now,
+      enabled: shiftMissedDoseTimes,
+      grace: missedDoseShiftLimit,
+    );
     final open = [
       for (final occurrence in occurrences)
-        if (_plannedDose(occurrence, now) case final dose?) dose,
+        if (_plannedDose(
+              occurrence,
+              now,
+              targets,
+              grace: missedDoseShiftLimit,
+            )
+            case final dose?)
+          dose,
     ]..sort((a, b) => a.targetAt.compareTo(b.targetAt));
     try {
       await _widgetChannel.invokeMethod<void>('update', {
@@ -551,6 +646,8 @@ class MedicationReminderRuntime {
   Future<void> _scheduleOverdueFollowUps({
     required MedicationSchedule schedule,
     required DateTime scheduledAt,
+    required DateTime keyAt,
+    required int bodyMinute,
     required DateTime now,
     required int count,
     required Duration interval,
@@ -558,7 +655,6 @@ class MedicationReminderRuntime {
   }) async {
     final scheduleId = schedule.id;
     if (scheduleId == null) return;
-    final minute = scheduledAt.hour * 60 + scheduledAt.minute;
     for (final when in overdueReminderInstants(
       scheduledAt: scheduledAt,
       now: now,
@@ -570,10 +666,10 @@ class MedicationReminderRuntime {
           (interval.inMinutes == 0 ? 1 : interval.inMinutes);
       await _scheduleReminder(
         id: _notificationId(
-          _overdueNotificationKey(scheduleId, scheduledAt, index),
+          _overdueNotificationKey(scheduleId, keyAt, index),
         ),
         schedule: schedule,
-        minute: minute,
+        minute: bodyMinute,
         when: timezone.TZDateTime.from(when, timezone.local),
         exact: exact,
         payload: scheduleId,
@@ -581,17 +677,25 @@ class MedicationReminderRuntime {
     }
   }
 
-  PlannedDose? _plannedDose(DoseOccurrence occurrence, DateTime now) {
+  PlannedDose? _plannedDose(
+    DoseOccurrence occurrence,
+    DateTime now,
+    Map<String, DateTime> targets, {
+    Duration grace = Duration.zero,
+  }) {
     final status = occurrence.statusAt(now);
     if (status != 'pending' && status != 'snoozed' && status != 'unrecorded') {
       return null;
     }
-    final target =
-        status == 'snoozed' &&
-            occurrence.snoozeUntil != null &&
-            occurrence.snoozeUntil!.isAfter(now)
-        ? occurrence.snoozeUntil!
-        : occurrence.scheduledAt;
+    if (!reminderDoseIsCurrent(
+      occurrence,
+      now,
+      targets,
+      grace: grace,
+    )) {
+      return null;
+    }
+    final target = doseTakeAt(occurrence, now, targets);
     final raw = occurrence.schedule.medicine.color;
     return PlannedDose(
       scheduleId: occurrence.schedule.id ?? '',

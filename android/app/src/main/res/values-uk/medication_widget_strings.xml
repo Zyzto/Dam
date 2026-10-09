@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Нагадування про препарати від Джанан</string>
+    <string name="medication_widget_status_next_dose">ДАЛІ</string>
+    <string name="medication_widget_status_all_set">ГОТОВО</string>
+    <string name="medication_widget_status_overdue">ПІЗНО</string>
+    <string name="medication_widget_status_snoozed">ПАУЗА</string>
+    <string name="medication_widget_status_soon">СКОРО</string>
+    <string name="medication_widget_countdown_hour">1г</string>
+    <string name="medication_widget_now">зараз</string>
+    <string name="medication_widget_hour_unit">г</string>
+    <string name="medication_widget_minute_unit">х</string>
+    <string name="medication_widget_medicine">Препарат</string>
+    <string name="medication_widget_no_dose_due">Немає дози</string>
+    <string name="medication_widget_no_medicine_dose_due">Немає дози препарату</string>
+    <string name="medication_widget_shows_all">Усі препарати</string>
+    <string name="medication_widget_configure_title">Віджет головного екрана</string>
+    <string name="medication_widget_configure_prompt">Який препарат показувати у цьому віджеті?</string>
+    <string name="medication_widget_configure_done">Додати віджет</string>
+</resources>

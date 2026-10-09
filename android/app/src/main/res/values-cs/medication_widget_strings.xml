@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Připomínky léků z Janan</string>
+    <string name="medication_widget_status_next_dose">DALŠÍ</string>
+    <string name="medication_widget_status_all_set">HOTOVO</string>
+    <string name="medication_widget_status_overdue">POZDĚ</string>
+    <string name="medication_widget_status_snoozed">ODLOŽENO</string>
+    <string name="medication_widget_status_soon">BRZY</string>
+    <string name="medication_widget_countdown_hour">1h</string>
+    <string name="medication_widget_now">teď</string>
+    <string name="medication_widget_hour_unit">h</string>
+    <string name="medication_widget_minute_unit">min</string>
+    <string name="medication_widget_medicine">Lék</string>
+    <string name="medication_widget_no_dose_due">Žádná dávka</string>
+    <string name="medication_widget_no_medicine_dose_due">Žádná dávka léku</string>
+    <string name="medication_widget_shows_all">Všechny léky</string>
+    <string name="medication_widget_configure_title">Widget na ploše</string>
+    <string name="medication_widget_configure_prompt">Který lék má tento widget zobrazovat?</string>
+    <string name="medication_widget_configure_done">Přidat widget</string>
+</resources>

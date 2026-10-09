@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Przypomnienia o lekach z Janan</string>
+    <string name="medication_widget_status_next_dose">NASTĘPNA</string>
+    <string name="medication_widget_status_all_set">GOTOWE</string>
+    <string name="medication_widget_status_overdue">PÓŹNO</string>
+    <string name="medication_widget_status_snoozed">DRZEMKA</string>
+    <string name="medication_widget_status_soon">WKRÓTCE</string>
+    <string name="medication_widget_countdown_hour">1h</string>
+    <string name="medication_widget_now">teraz</string>
+    <string name="medication_widget_hour_unit">h</string>
+    <string name="medication_widget_minute_unit">min</string>
+    <string name="medication_widget_medicine">Lek</string>
+    <string name="medication_widget_no_dose_due">Brak dawki</string>
+    <string name="medication_widget_no_medicine_dose_due">Brak dawki leku</string>
+    <string name="medication_widget_shows_all">Wszystkie leki</string>
+    <string name="medication_widget_configure_title">Widżet ekranu głównego</string>
+    <string name="medication_widget_configure_prompt">Który lek ma pokazywać ten widżet?</string>
+    <string name="medication_widget_configure_done">Dodaj widżet</string>
+</resources>

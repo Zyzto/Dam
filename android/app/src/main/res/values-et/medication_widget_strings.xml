@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Ravimi meeldetuletused Jananilt</string>
+    <string name="medication_widget_status_next_dose">JÄRGMINE</string>
+    <string name="medication_widget_status_all_set">VALMIS</string>
+    <string name="medication_widget_status_overdue">HILJA</string>
+    <string name="medication_widget_status_snoozed">EDASI</string>
+    <string name="medication_widget_status_soon">VARSTI</string>
+    <string name="medication_widget_countdown_hour">1h</string>
+    <string name="medication_widget_now">nüüd</string>
+    <string name="medication_widget_hour_unit">h</string>
+    <string name="medication_widget_minute_unit">min</string>
+    <string name="medication_widget_medicine">Ravim</string>
+    <string name="medication_widget_no_dose_due">Annust pole</string>
+    <string name="medication_widget_no_medicine_dose_due">Ravimiannust pole</string>
+    <string name="medication_widget_shows_all">Kõik ravimid</string>
+    <string name="medication_widget_configure_title">Avakuva vidin</string>
+    <string name="medication_widget_configure_prompt">Millist ravimit see vidin näitab?</string>
+    <string name="medication_widget_configure_done">Lisa vidin</string>
+</resources>

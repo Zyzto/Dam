@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Läkemedelspåminnelser från Janan</string>
+    <string name="medication_widget_status_next_dose">NÄSTA</string>
+    <string name="medication_widget_status_all_set">KLART</string>
+    <string name="medication_widget_status_overdue">SENT</string>
+    <string name="medication_widget_status_snoozed">VILAD</string>
+    <string name="medication_widget_status_soon">SNART</string>
+    <string name="medication_widget_countdown_hour">1h</string>
+    <string name="medication_widget_now">nu</string>
+    <string name="medication_widget_hour_unit">h</string>
+    <string name="medication_widget_minute_unit">min</string>
+    <string name="medication_widget_medicine">Läkemedel</string>
+    <string name="medication_widget_no_dose_due">Ingen dos</string>
+    <string name="medication_widget_no_medicine_dose_due">Ingen läkemedelsdos</string>
+    <string name="medication_widget_shows_all">Alla läkemedel</string>
+    <string name="medication_widget_configure_title">Widget på hemskärmen</string>
+    <string name="medication_widget_configure_prompt">Vilket läkemedel ska widgeten visa?</string>
+    <string name="medication_widget_configure_done">Lägg till widget</string>
+</resources>

@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Synchro Bluetooth</string>
+    <string name="bluetooth_sync_channel_description">Maintient la synchronisation Bluetooth du tensiomètre</string>
+    <string name="bluetooth_sync_scanning">Recherche (balayage) d\'appareils</string>
+</resources>

@@ -139,6 +139,273 @@ Duration scheduledDoseInterval(
   return const Duration(hours: 24);
 }
 
+/// Take-times after a dose stays untaken past [grace].
+///
+/// Saved schedule times stay as they are. The returned map only contains
+/// doses whose take-time moved. When [enabled] is false, or [grace] is zero,
+/// the map is empty.
+///
+/// Doses of one medicine are walked from earliest to latest. Duplicate ids
+/// collapse to the last copy.
+///
+/// * A dose taken more than [grace] after its saved time slides every later
+///   dose of that medicine by that same lateness, so the gap between doses
+///   stays. That can put a dose later than the next saved clock time.
+/// * A dose taken within [grace], taken early, or skipped clears the slide.
+///   The saved times return.
+/// * An open dose still untaken more than [grace] after its current time
+///   becomes due at [now], and later doses slide with it, while [now] is
+///   still before the halfway point to the next later slot. Doses saved for
+///   that same minute move together.
+/// * After that halfway point the missed dose keeps a slide it already had,
+///   and later doses go back to their saved times.
+///
+/// An active snooze is left on its snooze time. The slide from earlier doses
+/// still applies after it. When [followUpFrom] is set, a dose that is due
+/// now records the moment its limit ran out there. That instant stays put
+/// while [now] moves.
+Map<String, DateTime> shiftedDoseTargets(
+  Iterable<DoseOccurrence> occurrences, {
+  required DateTime now,
+  required bool enabled,
+  required Duration grace,
+  Map<String, DateTime>? followUpFrom,
+}) {
+  if (!enabled || grace <= Duration.zero) return const {};
+  final unique = <String, DoseOccurrence>{};
+  for (final dose in occurrences) {
+    unique[dose.id] = dose;
+  }
+  final byMedicine = <String, List<DoseOccurrence>>{};
+  for (final dose in unique.values) {
+    final key = dose.schedule.medicineId.isNotEmpty
+        ? dose.schedule.medicineId
+        : (dose.schedule.id ?? dose.id);
+    byMedicine.putIfAbsent(key, () => []).add(dose);
+  }
+  final targets = <String, DateTime>{};
+  for (final doses in byMedicine.values) {
+    doses.sort((a, b) {
+      final byTime = a.scheduledAt.compareTo(b.scheduledAt);
+      if (byTime != 0) return byTime;
+      return a.id.compareTo(b.id);
+    });
+    var carry = Duration.zero;
+    for (var index = 0; index < doses.length; index++) {
+      final dose = doses[index];
+      final scheduled = dose.scheduledAt;
+      if (dose.status == 'taken') {
+        final late = (dose.takenAt ?? scheduled).difference(scheduled);
+        carry = late > grace ? late : Duration.zero;
+        continue;
+      }
+      if (dose.status == 'skipped') {
+        carry = Duration.zero;
+        continue;
+      }
+      final snoozeUntil = dose.snoozeUntil;
+      if (dose.status == 'snoozed' &&
+          snoozeUntil != null &&
+          snoozeUntil.isAfter(now)) {
+        continue;
+      }
+      final effective = scheduled.add(carry);
+      if (!now.isAfter(effective.add(grace))) {
+        _rememberSlide(targets, dose.id, scheduled, effective);
+        continue;
+      }
+      final halfway = effective.add(
+        Duration(microseconds: _gapUntilNextDose(doses, index).inMicroseconds ~/ 2),
+      );
+      if (!now.isBefore(halfway)) {
+        _rememberSlide(targets, dose.id, scheduled, effective);
+        carry = Duration.zero;
+        continue;
+      }
+      targets[dose.id] = now;
+      // The take-time stays at [now] so later doses keep sliding. Follow-ups
+      // stay at the moment the limit ran out, which does not move on the
+      // next rebuild.
+      followUpFrom?[dose.id] = effective.add(grace);
+      final late = now.difference(scheduled);
+      carry = late.isNegative ? Duration.zero : late;
+    }
+  }
+  return targets;
+}
+
+/// The saved-time alarm stays off when the dose is already settled.
+///
+/// Taken and skipped doses stay quiet. A snooze that is still ahead of [now]
+/// is reminded by that snooze, so the saved time is not scheduled as well.
+/// Where the countdown and the alarm should point for this dose.
+///
+/// A snooze that is still ahead of [now] wins. Otherwise a shifted take-time
+/// wins, and the saved time remains when nothing moved.
+DateTime doseTakeAt(
+  DoseOccurrence dose,
+  DateTime now,
+  Map<String, DateTime> targets,
+) {
+  final snoozeUntil = dose.snoozeUntil;
+  if (dose.status == 'snoozed' &&
+      snoozeUntil != null &&
+      snoozeUntil.isAfter(now)) {
+    return snoozeUntil;
+  }
+  return targets[dose.id] ?? dose.scheduledAt;
+}
+
+/// A dose saved before today whose take-time has moved ahead of [now].
+///
+/// The schedule walk only covers today onward, so this dose still needs its
+/// own alarm.
+bool earlierDoseAlarmMovedAhead({
+  required DateTime scheduledAt,
+  required DateTime? movedTo,
+  required DateTime now,
+}) {
+  if (movedTo == null || !movedTo.isAfter(now)) return false;
+  final scheduledDay = DateTime(
+    scheduledAt.year,
+    scheduledAt.month,
+    scheduledAt.day,
+  );
+  final today = DateTime(now.year, now.month, now.day);
+  return scheduledDay.isBefore(today);
+}
+
+bool doseClockAlarmClaimed(DoseOccurrence? occurrence, DateTime now) {
+  if (occurrence == null) return false;
+  if (occurrence.status == 'taken' || occurrence.status == 'skipped') {
+    return true;
+  }
+  final snoozeUntil = occurrence.snoozeUntil;
+  return occurrence.status == 'snoozed' &&
+      snoozeUntil != null &&
+      snoozeUntil.isAfter(now);
+}
+
+/// Days of doses the home list and widget load.
+///
+/// With the move-times setting off this stays the original week. Turning the
+/// setting on extends it so a weekly miss can still slide the next dose.
+const int savedReminderHorizonDays = 7;
+const int shiftedReminderHorizonDays = 14;
+
+int reminderHorizonDays({
+  required bool shiftMissedDoseTimes,
+  required Duration grace,
+}) => shiftMissedDoseTimes && grace > Duration.zero
+    ? shiftedReminderHorizonDays
+    : savedReminderHorizonDays;
+
+/// The dose list the countdown and the alarms share.
+///
+/// When the setting is off, [history] is ignored and [upcoming] is returned
+/// unchanged. When it is on, the whole saved history stays in front of
+/// [upcoming]. A late take has to walk the doses after it, including ones
+/// that are no longer shown, so it can stop sliding once one of them passes
+/// the halfway point. Surfaces hide a dose from before today unless it is
+/// still the one to take.
+List<DoseOccurrence> dosesForReminderList({
+  required List<DoseOccurrence> history,
+  required List<DoseOccurrence> upcoming,
+  required DateTime now,
+  required bool shiftMissedDoseTimes,
+  required Duration grace,
+}) {
+  if (!shiftMissedDoseTimes || grace <= Duration.zero) return upcoming;
+  return [...history, ...upcoming];
+}
+
+/// Whether a dose is shown on the countdown, the next-up lines, and the widget.
+///
+/// A dose saved before today is shown while a snooze is still running, while
+/// its take-time is still ahead, or while [grace] has not run out. After that
+/// limit, it stays up only until the halfway point. The saved row stays in
+/// the reminder list either way, so later doses can still be placed from it.
+bool reminderDoseIsCurrent(
+  DoseOccurrence dose,
+  DateTime now,
+  Map<String, DateTime> targets, {
+  Duration grace = Duration.zero,
+}) {
+  final today = DateTime(now.year, now.month, now.day);
+  if (!dose.scheduledAt.isBefore(today)) return true;
+  if (_stillTheDoseToTake(dose, targets[dose.id], now)) return true;
+  if (grace <= Duration.zero) return false;
+  final status = dose.statusAt(now);
+  if (status != 'pending' && status != 'snoozed' && status != 'unrecorded') {
+    return false;
+  }
+  return !now.isAfter(dose.scheduledAt.add(grace));
+}
+
+/// Open doses from before today that are still the ones to take.
+///
+/// [earlierOpen] holds pending and snoozed rows whose saved time is before
+/// today. A row stays when its take-time is still ahead, or when a snooze is
+/// still running. A miss past the halfway point drops out, so an old daily
+/// dose does not sit on the timer. [context] is the recorded history and the
+/// doses from today onward, which decide that halfway point.
+List<DoseOccurrence> earlierOpenDosesStillDue({
+  required Iterable<DoseOccurrence> earlierOpen,
+  required Iterable<DoseOccurrence> context,
+  required DateTime now,
+  required Duration grace,
+}) {
+  if (grace <= Duration.zero) return const [];
+  final targets = shiftedDoseTargets(
+    [...context, ...earlierOpen],
+    now: now,
+    enabled: true,
+    grace: grace,
+  );
+  return [
+    for (final dose in earlierOpen)
+      if (_stillTheDoseToTake(dose, targets[dose.id], now)) dose,
+  ];
+}
+
+bool _stillTheDoseToTake(
+  DoseOccurrence dose,
+  DateTime? target,
+  DateTime now,
+) {
+  final snoozeUntil = dose.snoozeUntil;
+  if (dose.status == 'snoozed' &&
+      snoozeUntil != null &&
+      snoozeUntil.isAfter(now)) {
+    return true;
+  }
+  return target != null && !target.isBefore(now);
+}
+
+void _rememberSlide(
+  Map<String, DateTime> targets,
+  String id,
+  DateTime scheduled,
+  DateTime effective,
+) {
+  if (!effective.isBefore(scheduled.add(const Duration(minutes: 1)))) {
+    targets[id] = effective;
+  }
+}
+
+/// Gap from this dose to the next dose saved for a later minute.
+///
+/// A second dose in the same minute is the same slot, not the next one.
+/// With no later slot, the schedule's own interval is the gap.
+Duration _gapUntilNextDose(List<DoseOccurrence> doses, int index) {
+  final scheduled = doses[index].scheduledAt;
+  for (var later = index + 1; later < doses.length; later++) {
+    final gap = doses[later].scheduledAt.difference(scheduled);
+    if (gap > Duration.zero) return gap;
+  }
+  return scheduledDoseInterval(doses[index].schedule, scheduled);
+}
+
 /// How full the countdown ring is for a dose due at [target].
 ///
 /// The arc is the share of [interval] already elapsed, so a daily dose an hour

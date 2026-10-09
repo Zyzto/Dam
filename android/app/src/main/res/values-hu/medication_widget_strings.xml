@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Gyógyszeremlékeztetők a Janantól</string>
+    <string name="medication_widget_status_next_dose">KÖV.</string>
+    <string name="medication_widget_status_all_set">KÉSZ</string>
+    <string name="medication_widget_status_overdue">KÉSÉS</string>
+    <string name="medication_widget_status_snoozed">SZUNDI</string>
+    <string name="medication_widget_status_soon">HAMAR</string>
+    <string name="medication_widget_countdown_hour">1ó</string>
+    <string name="medication_widget_now">most</string>
+    <string name="medication_widget_hour_unit">ó</string>
+    <string name="medication_widget_minute_unit">p</string>
+    <string name="medication_widget_medicine">Gyógyszer</string>
+    <string name="medication_widget_no_dose_due">Nincs esedékes adag</string>
+    <string name="medication_widget_no_medicine_dose_due">Nincs esedékes gyógyszeradag</string>
+    <string name="medication_widget_shows_all">Minden gyógyszer</string>
+    <string name="medication_widget_configure_title">Kezdőképernyő-widget</string>
+    <string name="medication_widget_configure_prompt">Melyik gyógyszert mutassa ez a widget?</string>
+    <string name="medication_widget_configure_done">Widget hozzáadása</string>
+</resources>

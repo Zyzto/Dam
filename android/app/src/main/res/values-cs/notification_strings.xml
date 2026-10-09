@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Synchronizace Bluetooth</string>
+    <string name="bluetooth_sync_channel_description">Udržuje synchronizaci tlakoměru přes Bluetooth</string>
+    <string name="bluetooth_sync_scanning">Skenování zařízení</string>
+</resources>

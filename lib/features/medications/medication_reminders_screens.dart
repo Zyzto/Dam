@@ -31,16 +31,59 @@ part 'medication_reminder_day_log_card.dart';
 Future<List<DoseOccurrence>> upcomingDoseOccurrences(
   MedicationScheduleRepository repository, {
   DateTime? from,
+  bool shiftMissedDoseTimes = false,
+  int missedDoseShiftLimitMinutes = 60,
 }) async {
   final now = from ?? DateTime.now();
   final firstDay = DateTime(now.year, now.month, now.day);
-  final occurrences = <DoseOccurrence>[];
-  for (var offset = 0; offset < 7; offset++) {
-    occurrences.addAll(
+  final grace = Duration(minutes: missedDoseShiftLimitMinutes);
+  final horizon = reminderHorizonDays(
+    shiftMissedDoseTimes: shiftMissedDoseTimes,
+    grace: grace,
+  );
+  final history = horizon == savedReminderHorizonDays
+      ? const <DoseOccurrence>[]
+      : await repository.getExistingOccurrences(
+          DateRange(
+            start: firstDay.subtract(const Duration(days: 14)),
+            end: firstDay.subtract(const Duration(milliseconds: 1)),
+          ),
+        );
+  final upcoming = <DoseOccurrence>[];
+  for (var offset = 0; offset < horizon; offset++) {
+    upcoming.addAll(
       await repository.getOccurrences(firstDay.add(Duration(days: offset))),
     );
   }
-  return occurrences;
+  return dosesForReminderList(
+    history: history,
+    upcoming: upcoming,
+    now: now,
+    shiftMissedDoseTimes: shiftMissedDoseTimes,
+    grace: grace,
+  );
+}
+
+Future<void> _recordDoseReminder(
+  MedicationScheduleRepository repository,
+  AppSettings settings,
+  DoseOccurrence occurrence, {
+  DateTime? snoozeUntil,
+}) async {
+  final runtime = MedicationReminderRuntime.instance;
+  await runtime.cancelClaimedDose(occurrence.id);
+  if (!settings.shiftMissedDoseTimes) {
+    if (snoozeUntil != null) {
+      await runtime.scheduleSnooze(occurrence, snoozeUntil);
+    }
+    await _pushReminderWidget(
+      repository,
+      await upcomingDoseOccurrences(repository),
+      settings,
+    );
+    return;
+  }
+  await syncMedicationReminders(repository, settings);
 }
 
 final homeMedicationOccurrencesProvider = FutureProvider<List<DoseOccurrence>>((
@@ -52,18 +95,60 @@ final homeMedicationOccurrencesProvider = FutureProvider<List<DoseOccurrence>>((
     return const <DoseOccurrence>[];
   }
   final repository = ref.watch(medicationScheduleRepositoryProvider);
-  final occurrences = await upcomingDoseOccurrences(repository);
+  final occurrences = await upcomingDoseOccurrences(
+    repository,
+    shiftMissedDoseTimes: settings.shiftMissedDoseTimes,
+    missedDoseShiftLimitMinutes: settings.missedDoseShiftLimitMinutes,
+  );
   await _pushReminderWidget(repository, occurrences, settings);
   return occurrences;
 });
 
-Future<void> _syncMedicationReminders(
+Future<void>? _reminderSyncTail;
+
+Future<void> _enqueueReminderWork(Future<void> Function() action) {
+  final previous = _reminderSyncTail ?? Future<void>.value();
+  final run = previous.then((_) => action());
+  _reminderSyncTail = run.catchError((Object _) {});
+  return run;
+}
+
+/// Rebuilds alarms from the database, one rebuild at a time.
+///
+/// The load happens inside the queue. A rebuild that started from older
+/// rows cannot finish after a later one and put a recorded dose's alarm back.
+Future<void> syncMedicationReminders(
+  MedicationScheduleRepository repository,
+  AppSettings settings,
+) => _enqueueReminderWork(
+  () => _applyMedicationReminders(repository, settings),
+);
+
+/// Drops every medicine alarm and clears the home widget.
+Future<void> clearMedicationReminders() => _enqueueReminderWork(() async {
+  final runtime = MedicationReminderRuntime.instance;
+  await runtime.syncSchedules(const []);
+  await runtime.updateWidget(const []);
+});
+
+Future<void> _applyMedicationReminders(
   MedicationScheduleRepository repository,
   AppSettings settings,
 ) async {
-  final occurrences = await upcomingDoseOccurrences(repository);
-  await MedicationReminderRuntime.instance.syncSchedules(
-    await repository.getAll(),
+  final runtime = MedicationReminderRuntime.instance;
+  if (!settings.medicineFeatureEnabled) {
+    await runtime.syncSchedules(const []);
+    await runtime.updateWidget(const []);
+    return;
+  }
+  final occurrences = await upcomingDoseOccurrences(
+    repository,
+    shiftMissedDoseTimes: settings.shiftMissedDoseTimes,
+    missedDoseShiftLimitMinutes: settings.missedDoseShiftLimitMinutes,
+  );
+  final schedules = await repository.getAll();
+  await runtime.syncSchedules(
+    schedules,
     snoozedOccurrences: occurrences
         .where((occurrence) => occurrence.status == 'snoozed')
         .toList(),
@@ -72,8 +157,21 @@ Future<void> _syncMedicationReminders(
     overdueReminderInterval: Duration(
       minutes: settings.overdueReminderIntervalMinutes,
     ),
+    notificationsEnabled: settings.medicationNotificationsEnabled,
+    shiftMissedDoseTimes: settings.shiftMissedDoseTimes,
+    missedDoseShiftLimit: Duration(
+      minutes: settings.missedDoseShiftLimitMinutes,
+    ),
   );
-  await _pushReminderWidget(repository, occurrences, settings);
+  await runtime.updateWidget(
+    occurrences,
+    showAll: settings.showAllReminderRings,
+    schedules: schedules,
+    shiftMissedDoseTimes: settings.shiftMissedDoseTimes,
+    missedDoseShiftLimit: Duration(
+      minutes: settings.missedDoseShiftLimitMinutes,
+    ),
+  );
 }
 
 Future<void> _pushReminderWidget(
@@ -85,7 +183,34 @@ Future<void> _pushReminderWidget(
     occurrences,
     showAll: settings.showAllReminderRings,
     schedules: await repository.getAll(),
+    shiftMissedDoseTimes: settings.shiftMissedDoseTimes,
+    missedDoseShiftLimit: Duration(
+      minutes: settings.missedDoseShiftLimitMinutes,
+    ),
   );
+}
+
+Map<String, DateTime> _doseShiftTargets(
+  List<DoseOccurrence> occurrences,
+  DateTime now,
+  AppSettings settings,
+) => shiftedDoseTargets(
+  occurrences,
+  now: now,
+  enabled: settings.medicineFeatureEnabled && settings.shiftMissedDoseTimes,
+  grace: Duration(minutes: settings.missedDoseShiftLimitMinutes),
+);
+
+bool _sameClockMinute(DateTime a, DateTime b) =>
+    a.year == b.year &&
+    a.month == b.month &&
+    a.day == b.day &&
+    a.hour == b.hour &&
+    a.minute == b.minute;
+
+String _movedFromLabel(String time) {
+  final translated = 'reminderDoseMovedFrom'.tr(namedArgs: {'time': time});
+  return translated == 'reminderDoseMovedFrom' ? 'Moved from $time' : translated;
 }
 
 String _t(String key, String fallback) {
@@ -170,7 +295,10 @@ List<DoseOccurrence> nextUpDoseOccurrences(
   required DateTime now,
   DoseOccurrence? featured,
   int limit = 5,
+  DateTime Function(DoseOccurrence dose)? takeAt,
+  Duration grace = Duration.zero,
 }) {
+  DateTime at(DoseOccurrence dose) => takeAt?.call(dose) ?? dose.scheduledAt;
   final slots = limit - (featured == null ? 0 : 1);
   if (slots <= 0) return const [];
 
@@ -183,11 +311,19 @@ List<DoseOccurrence> nextUpDoseOccurrences(
     if (state != 'pending' && state != 'snoozed' && state != 'unrecorded') {
       continue;
     }
+    if (!reminderDoseIsCurrent(
+      dose,
+      now,
+      {dose.id: at(dose)},
+      grace: grace,
+    )) {
+      continue;
+    }
     byMedicine.putIfAbsent(dose.schedule.medicineId, () => []).add(dose);
   }
   for (final doses in byMedicine.values) {
     doses.sort((a, b) {
-      final byTime = a.scheduledAt.compareTo(b.scheduledAt);
+      final byTime = at(a).compareTo(at(b));
       if (byTime != 0) return byTime;
       return a.id.compareTo(b.id);
     });
@@ -210,7 +346,7 @@ List<DoseOccurrence> nextUpDoseOccurrences(
     }
     if (wave.isEmpty) continue;
     wave.sort((a, b) {
-      final byTime = a.scheduledAt.compareTo(b.scheduledAt);
+      final byTime = at(a).compareTo(at(b));
       if (byTime != 0) return byTime;
       return a.id.compareTo(b.id);
     });
@@ -220,7 +356,7 @@ List<DoseOccurrence> nextUpDoseOccurrences(
     }
   }
   selected.sort((a, b) {
-    final byTime = a.scheduledAt.compareTo(b.scheduledAt);
+    final byTime = at(a).compareTo(at(b));
     if (byTime != 0) return byTime;
     return a.id.compareTo(b.id);
   });
@@ -246,11 +382,13 @@ List<_DoseCountdown> _oneCountdownPerMedicine(List<_DoseCountdown> sorted) {
 bool _deferUpcomingDoseCard(
   DoseOccurrence occurrence,
   List<DoseOccurrence> occurrences,
-  DateTime now,
-) {
+  DateTime now, {
+  DateTime? takeAt,
+}) {
   // Check each occurrence independently so frequent schedules stay visible
   // whenever their next dose falls inside the four-hour window.
-  if (!occurrence.scheduledAt.isAfter(now.add(const Duration(hours: 4)))) {
+  final due = takeAt ?? occurrence.scheduledAt;
+  if (!due.isAfter(now.add(const Duration(hours: 4)))) {
     return false;
   }
 
@@ -286,13 +424,40 @@ class _MedicationReminderCardState
   final _targetKey = GlobalKey();
   Timer? _ticker;
   DateTime _now = DateTime.now();
+  DateTime? _lastShiftSync;
 
   @override
   void initState() {
     super.initState();
     _ticker = Timer.periodic(_refreshRate, (_) {
-      if (mounted) setState(() => _now = DateTime.now());
+      if (!mounted) return;
+      setState(() => _now = DateTime.now());
+      _syncShiftedReminders();
     });
+  }
+
+  void _syncShiftedReminders() {
+    final settings = ref.read(appSettingsProvider);
+    if (!settings.shiftMissedDoseTimes) return;
+    final occurrences = ref
+        .read(homeMedicationOccurrencesProvider)
+        .asData
+        ?.value;
+    if (occurrences == null) return;
+    final targets = _doseShiftTargets(occurrences, DateTime.now(), settings);
+    if (targets.isEmpty) return;
+    final now = DateTime.now();
+    final last = _lastShiftSync;
+    if (last != null && now.difference(last) < const Duration(minutes: 2)) {
+      return;
+    }
+    _lastShiftSync = now;
+    unawaited(
+      syncMedicationReminders(
+        ref.read(medicationScheduleRepositoryProvider),
+        settings,
+      ),
+    );
   }
 
   @override
@@ -306,6 +471,7 @@ class _MedicationReminderCardState
     _DoseCountdown? countdown,
     bool hasSchedules,
     ShapeBorder buttonShape,
+    Map<String, DateTime> shiftTargets,
   ) async {
     final targetRect = _globalRect(_targetKey);
     final screenSize = MediaQuery.sizeOf(context);
@@ -407,6 +573,7 @@ class _MedicationReminderCardState
                           maxHeight: availableHeight,
                           shape: panelShape,
                           contentOpacity: contentOpacity,
+                          shiftTargets: shiftTargets,
                         ),
                       ),
                     ),
@@ -442,8 +609,17 @@ class _MedicationReminderCardState
     final occurrenceList =
         occurrences.asData?.value ?? const <DoseOccurrence>[];
     final active = scheduleList.any((schedule) => schedule.active);
+    final shiftTargets = _doseShiftTargets(occurrenceList, _now, settings);
+    final shiftGrace = Duration(
+      minutes: settings.missedDoseShiftLimitMinutes,
+    );
     final openCountdowns = _oneCountdownPerMedicine(
-      _DoseCountdown.openFrom(occurrenceList, _now),
+      _DoseCountdown.openFrom(
+        occurrenceList,
+        _now,
+        targets: shiftTargets,
+        grace: shiftGrace,
+      ),
     );
     final countdown = openCountdowns.firstOrNull;
     final rings = settings.showAllReminderRings
@@ -493,6 +669,7 @@ class _MedicationReminderCardState
                   countdown,
                   active,
                   buttonShape,
+                  shiftTargets,
                 ),
               ),
             ),
@@ -519,7 +696,7 @@ class _DoseCountdown {
   final DoseOccurrence occurrence;
   final DateTime targetAt;
 
-  bool get overdue => targetAt.isBefore(DateTime.now());
+  bool get overdue => !targetAt.isAfter(DateTime.now());
   bool get snoozed => occurrence.statusAt(DateTime.now()) == 'snoozed';
   Duration remainingAt(DateTime now) => targetAt.difference(now);
 
@@ -542,8 +719,10 @@ class _DoseCountdown {
 
   static List<_DoseCountdown> openFrom(
     List<DoseOccurrence> occurrences,
-    DateTime now,
-  ) {
+    DateTime now, {
+    Map<String, DateTime> targets = const {},
+    Duration grace = Duration.zero,
+  }) {
     final candidates = <_DoseCountdown>[];
     for (final occurrence in occurrences) {
       final status = occurrence.statusAt(now);
@@ -552,12 +731,10 @@ class _DoseCountdown {
           status != 'unrecorded') {
         continue;
       }
-      final target =
-          status == 'snoozed' &&
-              occurrence.snoozeUntil != null &&
-              occurrence.snoozeUntil!.isAfter(now)
-          ? occurrence.snoozeUntil!
-          : occurrence.scheduledAt;
+      if (!reminderDoseIsCurrent(occurrence, now, targets, grace: grace)) {
+        continue;
+      }
+      final target = doseTakeAt(occurrence, now, targets);
       candidates.add(_DoseCountdown(occurrence: occurrence, targetAt: target));
     }
     candidates.sort((a, b) => a.targetAt.compareTo(b.targetAt));
@@ -589,8 +766,9 @@ class _MedicationCountdownCircle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final remaining = countdown?.remainingAt(now) ?? Duration.zero;
-    final overdue = countdown?.overdue ?? false;
+    final dose = countdown;
+    final remaining = dose?.remainingAt(now) ?? Duration.zero;
+    final overdue = dose != null && !dose.targetAt.isAfter(now);
     final urgent =
         countdown != null && !overdue && remaining <= const Duration(hours: 1);
     final ringColor = countdown == null
@@ -1220,6 +1398,7 @@ class _MedicationDosePanel extends ConsumerStatefulWidget {
     required this.maxHeight,
     required this.shape,
     required this.contentOpacity,
+    this.shiftTargets = const {},
   });
 
   final List<DoseOccurrence> occurrences;
@@ -1229,6 +1408,7 @@ class _MedicationDosePanel extends ConsumerStatefulWidget {
   final double? maxHeight;
   final ShapeBorder shape;
   final double contentOpacity;
+  final Map<String, DateTime> shiftTargets;
 
   @override
   ConsumerState<_MedicationDosePanel> createState() =>
@@ -1238,9 +1418,17 @@ class _MedicationDosePanel extends ConsumerStatefulWidget {
 class _MedicationDosePanelState extends ConsumerState<_MedicationDosePanel> {
   bool _saving = false;
 
+  DateTime _takeAt(DoseOccurrence dose) =>
+      doseTakeAt(dose, widget.now, widget.shiftTargets);
+
   List<DoseOccurrence> _visibleOccurrences() => widget.occurrences
       .where(
-        (dose) => !_deferUpcomingDoseCard(dose, widget.occurrences, widget.now),
+        (dose) => !_deferUpcomingDoseCard(
+          dose,
+          widget.occurrences,
+          widget.now,
+          takeAt: _takeAt(dose),
+        ),
       )
       .toList();
 
@@ -1251,6 +1439,7 @@ class _MedicationDosePanelState extends ConsumerState<_MedicationDosePanel> {
           countdown.occurrence,
           widget.occurrences,
           widget.now,
+          takeAt: countdown.targetAt,
         )) {
       return null;
     }
@@ -1272,16 +1461,11 @@ class _MedicationDosePanelState extends ConsumerState<_MedicationDosePanel> {
         status,
         snoozeUntil: snoozeUntil,
       );
-      final runtime = MedicationReminderRuntime.instance;
-      await runtime.cancelClaimedDose(occurrence.id);
-      if (snoozeUntil != null) {
-        await runtime.scheduleSnooze(occurrence, snoozeUntil);
-      }
-      final occurrences = await upcomingDoseOccurrences(repository);
-      await _pushReminderWidget(
+      await _recordDoseReminder(
         repository,
-        occurrences,
         ref.read(appSettingsProvider),
+        occurrence,
+        snoozeUntil: snoozeUntil,
       );
       ref.invalidate(homeMedicationOccurrencesProvider);
       ref.invalidate(todayMedicationOccurrencesProvider);
@@ -1319,6 +1503,10 @@ class _MedicationDosePanelState extends ConsumerState<_MedicationDosePanel> {
       _visibleOccurrences(),
       now: widget.now,
       featured: widget.countdown?.occurrence,
+      takeAt: _takeAt,
+      grace: Duration(
+        minutes: ref.watch(appSettingsProvider).missedDoseShiftLimitMinutes,
+      ),
     );
 
     return SizedBox(
@@ -1375,6 +1563,7 @@ class _MedicationDosePanelState extends ConsumerState<_MedicationDosePanel> {
                       _DeferredDoseSummary(
                         occurrence: deferredDose,
                         now: widget.now,
+                        takeAt: widget.countdown?.targetAt,
                       )
                     else if (countdown == null)
                       _MedicationPanelEmpty(hasSchedules: widget.hasSchedules)
@@ -1403,7 +1592,11 @@ class _MedicationDosePanelState extends ConsumerState<_MedicationDosePanel> {
                       ),
                       const SizedBox(height: 5),
                       for (final dose in visibleLater)
-                        _LaterDoseLine(dose: dose, now: widget.now),
+                        _LaterDoseLine(
+                          dose: dose,
+                          now: widget.now,
+                          takeAt: _takeAt(dose),
+                        ),
                     ],
                     const SizedBox(height: 12),
                     Row(
@@ -1458,10 +1651,15 @@ class _MedicationDosePanelState extends ConsumerState<_MedicationDosePanel> {
 }
 
 class _DeferredDoseSummary extends StatelessWidget {
-  const _DeferredDoseSummary({required this.occurrence, required this.now});
+  const _DeferredDoseSummary({
+    required this.occurrence,
+    required this.now,
+    this.takeAt,
+  });
 
   final DoseOccurrence occurrence;
   final DateTime now;
+  final DateTime? takeAt;
 
   @override
   Widget build(BuildContext context) {
@@ -1473,7 +1671,8 @@ class _DeferredDoseSummary extends StatelessWidget {
             rawColor == Colors.transparent.toARGB32()
         ? theme.colorScheme.primary
         : Color(rawColor);
-    final scheduledAt = occurrence.scheduledAt;
+    final scheduledAt =
+        takeAt != null && takeAt!.isAfter(now) ? takeAt! : occurrence.scheduledAt;
     final time = MaterialLocalizations.of(
       context,
     ).formatTimeOfDay(TimeOfDay.fromDateTime(scheduledAt));
@@ -1557,14 +1756,27 @@ class _MedicationDoseActionCard extends StatelessWidget {
     final occurrence = countdown.occurrence;
     final medicine = occurrence.schedule.medicine;
     final color = countdown.medicineColor(theme);
-    final scheduledTime = MaterialLocalizations.of(
-      context,
-    ).formatTimeOfDay(TimeOfDay.fromDateTime(occurrence.scheduledAt));
-    final scheduledDay = _doseDayLabel(context, occurrence.scheduledAt, now);
+    final localizations = MaterialLocalizations.of(context);
+    final originalTime = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(occurrence.scheduledAt),
+    );
+    final dueNow = !countdown.targetAt.isAfter(now) &&
+        !_sameClockMinute(countdown.targetAt, occurrence.scheduledAt);
+    final movedAhead =
+        countdown.targetAt.isAfter(now) &&
+        !_sameClockMinute(countdown.targetAt, occurrence.scheduledAt);
+    final shownAt = movedAhead ? countdown.targetAt : occurrence.scheduledAt;
+    final scheduledTime = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(shownAt),
+    );
+    final scheduledDay = _doseDayLabel(context, shownAt, now);
     final scheduledLabel = _t('reminderScheduled', 'Scheduled');
-    final scheduled =
-        '$scheduledLabel: $scheduledTime'
-        '${DateUtils.isSameDay(occurrence.scheduledAt, now) ? '' : ' · $scheduledDay'}';
+    final scheduled = dueNow
+        ? '${_t('reminderDueNow', 'Due now')} · ${_movedFromLabel(originalTime)}'
+        : movedAhead
+        ? '$scheduledLabel: $scheduledTime · ${_movedFromLabel(originalTime)}'
+        : '$scheduledLabel: $scheduledTime'
+              '${DateUtils.isSameDay(shownAt, now) ? '' : ' · $scheduledDay'}';
     return DecoratedBox(
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
@@ -1706,7 +1918,7 @@ class _DoseStatusLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final status = countdown.occurrence.statusAt(now);
-    final overdue = countdown.targetAt.isBefore(now);
+    final overdue = !countdown.targetAt.isAfter(now);
     final color = _countdownStateColor(countdown.targetAt, now);
     final label = overdue
         ? _t('reminderStatusOverdue', 'Overdue')
@@ -1747,24 +1959,37 @@ class _DoseStatusLine extends StatelessWidget {
 }
 
 class _LaterDoseLine extends StatelessWidget {
-  const _LaterDoseLine({required this.dose, required this.now});
+  const _LaterDoseLine({required this.dose, required this.now, this.takeAt});
 
   final DoseOccurrence dose;
   final DateTime now;
+  final DateTime? takeAt;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final when = MaterialLocalizations.of(
-      context,
-    ).formatTimeOfDay(TimeOfDay.fromDateTime(dose.scheduledAt));
-    final dayLabel = _doseDayLabel(context, dose.scheduledAt, now);
+    final localizations = MaterialLocalizations.of(context);
+    final snoozed = dose.statusAt(now) == 'snoozed';
+    final moved =
+        !snoozed &&
+        takeAt != null &&
+        !_sameClockMinute(takeAt!, dose.scheduledAt);
+    final shownAt = snoozed && takeAt != null
+        ? takeAt!
+        : moved
+        ? takeAt!
+        : dose.scheduledAt;
+    final when = localizations.formatTimeOfDay(TimeOfDay.fromDateTime(shownAt));
+    final movedFrom = moved
+        ? ' · ${_movedFromLabel(localizations.formatTimeOfDay(TimeOfDay.fromDateTime(dose.scheduledAt)))}'
+        : '';
+    final dayLabel = _doseDayLabel(context, shownAt, now);
     final medicine = dose.schedule.medicine;
     final medicineColor = medicine.color == null || medicine.color == 0
         ? theme.colorScheme.primary
         : Color(medicine.color!);
     final label =
-        '$dayLabel, $when  •  ${medicine.designation} '
+        '$dayLabel, $when$movedFrom  •  ${medicine.designation} '
         '${formatMedicationDose(dose.schedule.doseAmount, dose.schedule.doseUnit)}';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -1882,7 +2107,7 @@ class MedicationSchedulesScreen extends ConsumerWidget {
         .read(medicationScheduleRepositoryProvider)
         .save(schedule.copyWith(state: state));
     final repository = ref.read(medicationScheduleRepositoryProvider);
-    await _syncMedicationReminders(repository, ref.read(appSettingsProvider));
+    await syncMedicationReminders(repository, ref.read(appSettingsProvider));
     ref.invalidate(medicationSchedulesProvider);
     ref.invalidate(todayMedicationOccurrencesProvider);
     ref.invalidate(medicationDayProvider);
@@ -2102,19 +2327,18 @@ class _TodayMedicinesScreenState extends ConsumerState<TodayMedicinesScreen> {
     String status, {
     DateTime? snoozeUntil,
   }) async {
-    await ref
-        .read(medicationScheduleRepositoryProvider)
-        .setOccurrenceStatus(occurrence, status, snoozeUntil: snoozeUntil);
-    final runtime = MedicationReminderRuntime.instance;
-    await runtime.cancelClaimedDose(occurrence.id);
-    if (status == 'snoozed' && snoozeUntil != null) {
-      await runtime.scheduleSnooze(occurrence, snoozeUntil);
-    }
     final repository = ref.read(medicationScheduleRepositoryProvider);
-    await _pushReminderWidget(
+    final settings = ref.read(appSettingsProvider);
+    await repository.setOccurrenceStatus(
+      occurrence,
+      status,
+      snoozeUntil: snoozeUntil,
+    );
+    await _recordDoseReminder(
       repository,
-      await upcomingDoseOccurrences(repository),
-      ref.read(appSettingsProvider),
+      settings,
+      occurrence,
+      snoozeUntil: status == 'snoozed' ? snoozeUntil : null,
     );
     ref.invalidate(todayMedicationOccurrencesProvider);
     ref.invalidate(medicationDayProvider);
@@ -2481,11 +2705,13 @@ class _MedicationScheduleEditorScreenState
             state: widget.initial?.state ?? MedicationScheduleState.active,
           ),
         );
+    final settings = ref.read(appSettingsProvider);
     final notificationPermissionGranted =
+        !settings.medicationNotificationsEnabled ||
         !isFirstSchedule ||
         await MedicationReminderRuntime.instance.requestPermissions();
     final repository = ref.read(medicationScheduleRepositoryProvider);
-    await _syncMedicationReminders(repository, ref.read(appSettingsProvider));
+    await syncMedicationReminders(repository, settings);
     ref.invalidate(medicationSchedulesProvider);
     ref.invalidate(todayMedicationOccurrencesProvider);
     ref.invalidate(medicationDayProvider);

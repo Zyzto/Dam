@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Medisinpåminnelser fra Janan</string>
+    <string name="medication_widget_status_next_dose">NESTE</string>
+    <string name="medication_widget_status_all_set">FERDIG</string>
+    <string name="medication_widget_status_overdue">FOR SENT</string>
+    <string name="medication_widget_status_snoozed">UTSAT</string>
+    <string name="medication_widget_status_soon">SNART</string>
+    <string name="medication_widget_countdown_hour">1t</string>
+    <string name="medication_widget_now">nå</string>
+    <string name="medication_widget_hour_unit">t</string>
+    <string name="medication_widget_minute_unit">min</string>
+    <string name="medication_widget_medicine">Medisin</string>
+    <string name="medication_widget_no_dose_due">Ingen dose</string>
+    <string name="medication_widget_no_medicine_dose_due">Ingen medisindose</string>
+    <string name="medication_widget_shows_all">Alle medisiner</string>
+    <string name="medication_widget_configure_title">Widget på startskjermen</string>
+    <string name="medication_widget_configure_prompt">Hvilken medisin skal denne widgeten vise?</string>
+    <string name="medication_widget_configure_done">Legg til widget</string>
+</resources>

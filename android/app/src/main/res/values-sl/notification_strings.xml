@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Sinhronizacija Bluetooth</string>
+    <string name="bluetooth_sync_channel_description">Ohranja sinhronizacijo merilnika prek Bluetooth</string>
+    <string name="bluetooth_sync_scanning">Iskanje naprav</string>
+</resources>

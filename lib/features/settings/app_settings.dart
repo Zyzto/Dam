@@ -43,8 +43,11 @@ class AppSettings {
     required this.bluetoothImportMode,
     required this.compactList,
     required this.roundedReminderButton,
+    required this.medicationNotificationsEnabled,
     required this.overdueReminderCount,
     required this.overdueReminderIntervalMinutes,
+    required this.shiftMissedDoseTimes,
+    required this.missedDoseShiftLimitMinutes,
     required this.showAllReminderRings,
     required this.needlePinBarWidth,
     required this.bottomAppBars,
@@ -110,10 +113,15 @@ class AppSettings {
       ),
       compactList: controller.get(compactListSetting),
       roundedReminderButton: controller.get(roundedReminderButtonSetting),
+      medicationNotificationsEnabled: controller.get(
+        medicationNotificationsEnabledSetting,
+      ),
       overdueReminderCount: controller.get(overdueReminderCountSetting),
       overdueReminderIntervalMinutes: controller.get(
         overdueReminderIntervalSetting,
       ),
+      shiftMissedDoseTimes: controller.get(shiftMissedDoseTimesSetting),
+      missedDoseShiftLimitMinutes: controller.get(missedDoseShiftLimitSetting),
       showAllReminderRings: controller.get(showAllReminderRingsSetting),
       needlePinBarWidth: controller.get(needlePinBarWidthSetting),
       bottomAppBars: controller.get(bottomAppBarsSetting),
@@ -177,8 +185,11 @@ class AppSettings {
   final BluetoothMeasurementImportMode bluetoothImportMode;
   final bool compactList;
   final bool roundedReminderButton;
+  final bool medicationNotificationsEnabled;
   final int overdueReminderCount;
   final int overdueReminderIntervalMinutes;
+  final bool shiftMissedDoseTimes;
+  final int missedDoseShiftLimitMinutes;
   final bool showAllReminderRings;
   final double needlePinBarWidth;
   final bool bottomAppBars;
@@ -282,8 +293,11 @@ AppSettings appSettings(Ref ref) {
   ref.watch(settings.provider(bluetoothImportModeSetting));
   ref.watch(settings.provider(compactListSetting));
   ref.watch(settings.provider(roundedReminderButtonSetting));
+  ref.watch(settings.provider(medicationNotificationsEnabledSetting));
   ref.watch(settings.provider(overdueReminderCountSetting));
   ref.watch(settings.provider(overdueReminderIntervalSetting));
+  ref.watch(settings.provider(shiftMissedDoseTimesSetting));
+  ref.watch(settings.provider(missedDoseShiftLimitSetting));
   ref.watch(settings.provider(showAllReminderRingsSetting));
   ref.watch(settings.provider(needlePinBarWidthSetting));
   ref.watch(settings.provider(bottomAppBarsSetting));

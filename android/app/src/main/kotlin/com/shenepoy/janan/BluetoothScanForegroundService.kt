@@ -22,10 +22,9 @@ class BluetoothScanForegroundService : Service() {
         private const val RESULT_NOTIFICATION_ID = 4103
         private const val ACTION_START = "com.shenepoy.janan.BLE_START"
         private const val EXTRA_TEXT = "text"
-        private const val DEFAULT_TEXT = "Scanning for Bluetooth devices"
 
         @Volatile
-        private var pendingText = DEFAULT_TEXT
+        private var pendingText: String? = null
 
         @Volatile
         private var stopRequested = false
@@ -34,11 +33,14 @@ class BluetoothScanForegroundService : Service() {
         private var foregroundStarted = false
 
         fun start(context: Context, text: String) {
-            pendingText = text
+            val message = text.ifBlank {
+                context.getString(R.string.bluetooth_sync_scanning)
+            }
+            pendingText = message
             stopRequested = false
             val intent = Intent(context, BluetoothScanForegroundService::class.java)
                 .setAction(ACTION_START)
-                .putExtra(EXTRA_TEXT, text)
+                .putExtra(EXTRA_TEXT, message)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -83,10 +85,10 @@ class BluetoothScanForegroundService : Service() {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Bluetooth sync",
+                context.getString(R.string.bluetooth_sync_channel_name),
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "Keeps Bluetooth meter synchronization active"
+                description = context.getString(R.string.bluetooth_sync_channel_description)
                 setShowBadge(false)
             }
             context.getSystemService(NotificationManager::class.java)
@@ -105,7 +107,7 @@ class BluetoothScanForegroundService : Service() {
             )
             return Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
-                .setContentTitle("Janan")
+                .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(text)
                 .setContentIntent(openApp)
                 .setOngoing(true)
@@ -126,7 +128,7 @@ class BluetoothScanForegroundService : Service() {
             )
             return Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
-                .setContentTitle("Janan")
+                .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(text)
                 .setContentIntent(openApp)
                 .setOngoing(false)
@@ -137,7 +139,7 @@ class BluetoothScanForegroundService : Service() {
         }
     }
 
-    private var notificationText = DEFAULT_TEXT
+    private var notificationText = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -145,7 +147,9 @@ class BluetoothScanForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        notificationText = intent?.getStringExtra(EXTRA_TEXT) ?: pendingText
+        notificationText = intent?.getStringExtra(EXTRA_TEXT)
+            ?: pendingText
+            ?: getString(R.string.bluetooth_sync_scanning)
         try {
             showNotification()
             foregroundStarted = true

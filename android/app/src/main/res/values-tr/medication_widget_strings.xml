@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Janan ilaç hatırlatmaları</string>
+    <string name="medication_widget_status_next_dose">SONRAKİ</string>
+    <string name="medication_widget_status_all_set">TAMAM</string>
+    <string name="medication_widget_status_overdue">GEÇ</string>
+    <string name="medication_widget_status_snoozed">ERTELE</string>
+    <string name="medication_widget_status_soon">YAKIN</string>
+    <string name="medication_widget_countdown_hour">1sa</string>
+    <string name="medication_widget_now">şimdi</string>
+    <string name="medication_widget_hour_unit">sa</string>
+    <string name="medication_widget_minute_unit">dk</string>
+    <string name="medication_widget_medicine">İlaç</string>
+    <string name="medication_widget_no_dose_due">Doz yok</string>
+    <string name="medication_widget_no_medicine_dose_due">İlaç dozu yok</string>
+    <string name="medication_widget_shows_all">Tüm ilaçlar</string>
+    <string name="medication_widget_configure_title">Ana ekran bileşeni</string>
+    <string name="medication_widget_configure_prompt">Bu bileşen hangi ilacı göstersin?</string>
+    <string name="medication_widget_configure_done">Bileşen ekle</string>
+</resources>

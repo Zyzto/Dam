@@ -27,4 +27,26 @@ void main() {
       expect(map.values.every((v) => v is String && v.isNotEmpty), isTrue);
     }
   });
+
+  test('app name uses the local script outside Latin languages', () {
+    const names = {
+      'ar.json': 'الجنان',
+      'bg.json': 'Джанан',
+      'ru.json': 'Джанан',
+      'uk.json': 'Джанан',
+      'zh.json': '贾南',
+      'zh-Hant.json': '賈南',
+      'ta.json': 'ஜனான்',
+    };
+    for (final entry in names.entries) {
+      final locale = _load(entry.key);
+      expect(locale['title'], entry.value);
+    }
+    expect(_load('en.json')['title'], 'Janan');
+    expect(_load('de.json')['title'], 'Janan');
+  });
 }
+
+Map<String, dynamic> _load(String name) =>
+    jsonDecode(File('assets/translations/$name').readAsStringSync())
+        as Map<String, dynamic>;

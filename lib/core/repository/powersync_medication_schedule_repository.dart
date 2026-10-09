@@ -115,13 +115,13 @@ class PowerSyncMedicationScheduleRepository
         continue;
       for (final minute in schedule.timeMinutes) {
         final localKey = '$dayKey/$minute';
-        final occurrenceId = '${schedule.id}.$dayKey.$minute';
+        final scheduledAt = day.add(Duration(minutes: minute));
+        final occurrenceId = medicationDoseOccurrenceId(schedule.id!, scheduledAt);
         final existing = await _db.getAll(
           'SELECT id FROM dose_occurrences WHERE id = ?',
           [occurrenceId],
         );
         if (existing.isNotEmpty) continue;
-        final scheduledAt = day.add(Duration(minutes: minute));
         await _db.execute(
           'INSERT INTO dose_occurrences '
           '(id, schedule_id, local_key, scheduled_unix_s, status) '
@@ -201,6 +201,37 @@ class PowerSyncMedicationScheduleRepository
   }
 
   @override
+  Future<List<DoseOccurrence>> getExistingOccurrences(DateRange range) async {
+    final rows = await _db.getAll(
+      'SELECT o.id AS occurrence_id, o.scheduled_unix_s, o.status, '
+      'o.snooze_until_unix_s, o.taken_at_unix_s, '
+      's.id AS schedule_id, s.med_id, s.dose_amount, s.dose_unit, '
+      's.time_minutes_json, s.dose_timings_json, s.weekdays_mask, '
+      's.start_date, s.end_date, s.active, s.ended, '
+      'm.designation, m.color, m.default_dose_mg, m.dose_unit AS medicine_unit '
+      'FROM dose_occurrences o '
+      'JOIN medication_schedules s ON s.id = o.schedule_id '
+      'JOIN medicines m ON m.id = s.med_id '
+      'WHERE o.scheduled_unix_s BETWEEN ? AND ? '
+      'ORDER BY o.scheduled_unix_s',
+      [range.startStamp, range.endStamp],
+    );
+    return [
+      for (final row in rows)
+        DoseOccurrence(
+          id: row['occurrence_id'] as String,
+          schedule: _scheduleFromRow(row),
+          scheduledAt: DateTime.fromMillisecondsSinceEpoch(
+            (row['scheduled_unix_s'] as int) * 1000,
+          ),
+          status: row['status'] as String,
+          snoozeUntil: _dateTime(row['snooze_until_unix_s']),
+          takenAt: _dateTime(row['taken_at_unix_s']),
+        ),
+    ];
+  }
+
+  @override
   Future<void> delete(String id) async {
     await _db.execute(
       'UPDATE intakes SET occurrence_id = NULL WHERE occurrence_id LIKE ?',
@@ -218,23 +249,10 @@ class PowerSyncMedicationScheduleRepository
     String status, {
     DateTime? snoozeUntil,
   }) async {
-    DateTime? takenAt;
-    if (status == 'taken') {
-      takenAt = DateTime.now();
-      final schedule = occurrence.schedule;
-      await _intakes.add(
-        MedicineIntake(
-          time: takenAt,
-          medicine: schedule.medicine,
-          dosis: Weight.mg(schedule.doseAmount),
-          occurrenceId: occurrence.id,
-        ),
-      );
-    }
+    final takenAt = status == 'taken' ? DateTime.now() : null;
     await _db.execute(
       'UPDATE dose_occurrences SET status = ?, snooze_until_unix_s = ?, '
-      'taken_at_unix_s = ?, intake_id = (SELECT id FROM intakes WHERE occurrence_id = ?) '
-      'WHERE id = ?',
+      'taken_at_unix_s = ? WHERE id = ?',
       [
         status,
         snoozeUntil?.millisecondsSinceEpoch == null
@@ -244,8 +262,21 @@ class PowerSyncMedicationScheduleRepository
             ? null
             : takenAt!.millisecondsSinceEpoch ~/ 1000,
         occurrence.id,
-        occurrence.id,
       ],
+    );
+    if (takenAt == null) return;
+    await _intakes.add(
+      MedicineIntake(
+        time: takenAt,
+        medicine: occurrence.schedule.medicine,
+        dosis: Weight.mg(occurrence.schedule.doseAmount),
+        occurrenceId: occurrence.id,
+      ),
+    );
+    await _db.execute(
+      'UPDATE dose_occurrences SET intake_id = ('
+      'SELECT id FROM intakes WHERE occurrence_id = ?) WHERE id = ?',
+      [occurrence.id, occurrence.id],
     );
   }
 

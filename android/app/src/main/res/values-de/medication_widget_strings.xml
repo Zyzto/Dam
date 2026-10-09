@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Medikamenten-Erinnerungen von Janan</string>
+    <string name="medication_widget_status_next_dose">NÄCHSTE</string>
+    <string name="medication_widget_status_all_set">FERTIG</string>
+    <string name="medication_widget_status_overdue">SPÄT</string>
+    <string name="medication_widget_status_snoozed">PAUSE</string>
+    <string name="medication_widget_status_soon">BALD</string>
+    <string name="medication_widget_countdown_hour">1h</string>
+    <string name="medication_widget_now">jetzt</string>
+    <string name="medication_widget_hour_unit">h</string>
+    <string name="medication_widget_minute_unit">m</string>
+    <string name="medication_widget_medicine">Medikament</string>
+    <string name="medication_widget_no_dose_due">Keine Dosis fällig</string>
+    <string name="medication_widget_no_medicine_dose_due">Keine Medikamentendosis fällig</string>
+    <string name="medication_widget_shows_all">Alle Medikamente</string>
+    <string name="medication_widget_configure_title">Startbildschirm-Widget</string>
+    <string name="medication_widget_configure_prompt">Welches Medikament soll dieses Widget anzeigen?</string>
+    <string name="medication_widget_configure_done">Widget hinzufügen</string>
+</resources>

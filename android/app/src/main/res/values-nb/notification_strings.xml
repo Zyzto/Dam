@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Bluetooth-synkronisering</string>
+    <string name="bluetooth_sync_channel_description">Holder Bluetooth-synkronisering av måleren aktiv</string>
+    <string name="bluetooth_sync_scanning">Søker etter enheter</string>
+</resources>

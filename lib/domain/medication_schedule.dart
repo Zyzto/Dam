@@ -142,3 +142,14 @@ String? closestOpenDoseId(
   }
   return bestId;
 }
+
+/// Stable id for one local dose slot. Matches rows in `dose_occurrences`.
+String medicationDoseOccurrenceId(String scheduleId, DateTime localTime) {
+  final day = DateTime(localTime.year, localTime.month, localTime.day);
+  final minute = localTime.hour * 60 + localTime.minute;
+  final key =
+      '${day.year.toString().padLeft(4, '0')}-'
+      '${day.month.toString().padLeft(2, '0')}-'
+      '${day.day.toString().padLeft(2, '0')}';
+  return '$scheduleId.$key.$minute';
+}

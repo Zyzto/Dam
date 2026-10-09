@@ -18,6 +18,8 @@ class _DayLogPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final doses = ref.watch(medicationDayProvider(day));
+    final settings = ref.watch(appSettingsProvider);
+    final upcoming = ref.watch(homeMedicationOccurrencesProvider);
     return doses.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(child: Text('$error')),
@@ -34,6 +36,16 @@ class _DayLogPage extends ConsumerWidget {
         }
         final ordered = [...items]
           ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+        final known = upcoming.asData?.value ?? const <DoseOccurrence>[];
+        final history = <String, DoseOccurrence>{
+          for (final dose in known) dose.id: dose,
+          for (final dose in items) dose.id: dose,
+        };
+        final targets = _doseShiftTargets(
+          history.values.toList(),
+          DateTime.now(),
+          settings,
+        );
         return RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(medicationDayProvider(day));
@@ -48,6 +60,7 @@ class _DayLogPage extends ConsumerWidget {
               final dose = ordered[index];
               return _DayLogCard(
                 occurrence: dose,
+                shiftedTo: targets[dose.id],
                 onTaken: () => onTaken(dose),
                 onSkip: () => onSkip(dose),
                 onSnooze: () => onSnooze(dose),

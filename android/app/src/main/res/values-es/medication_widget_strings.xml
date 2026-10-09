@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Recordatorios de medicinas de Janan</string>
+    <string name="medication_widget_status_next_dose">SIGUE</string>
+    <string name="medication_widget_status_all_set">LISTO</string>
+    <string name="medication_widget_status_overdue">TARDE</string>
+    <string name="medication_widget_status_snoozed">PAUSA</string>
+    <string name="medication_widget_status_soon">PRONTO</string>
+    <string name="medication_widget_countdown_hour">1h</string>
+    <string name="medication_widget_now">ahora</string>
+    <string name="medication_widget_hour_unit">h</string>
+    <string name="medication_widget_minute_unit">min</string>
+    <string name="medication_widget_medicine">Medicina</string>
+    <string name="medication_widget_no_dose_due">Ninguna dosis pendiente</string>
+    <string name="medication_widget_no_medicine_dose_due">Ninguna dosis de medicina pendiente</string>
+    <string name="medication_widget_shows_all">Todos los medicamentos</string>
+    <string name="medication_widget_configure_title">Widget de la pantalla de inicio</string>
+    <string name="medication_widget_configure_prompt">¿Qué medicamento debe mostrar este widget?</string>
+    <string name="medication_widget_configure_done">Añadir widget</string>
+</resources>

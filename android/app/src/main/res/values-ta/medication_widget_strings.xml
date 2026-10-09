@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">ஜனான் மருந்து நினைவூட்டல்கள்</string>
+    <string name="medication_widget_status_next_dose">அடுத்து</string>
+    <string name="medication_widget_status_all_set">முடிந்தது</string>
+    <string name="medication_widget_status_overdue">தாமதம்</string>
+    <string name="medication_widget_status_snoozed">ஒத்தி</string>
+    <string name="medication_widget_status_soon">விரைவில்</string>
+    <string name="medication_widget_countdown_hour">1ம</string>
+    <string name="medication_widget_now">இப்போ</string>
+    <string name="medication_widget_hour_unit">ம</string>
+    <string name="medication_widget_minute_unit">நி</string>
+    <string name="medication_widget_medicine">மருந்து</string>
+    <string name="medication_widget_no_dose_due">அளவு இல்லை</string>
+    <string name="medication_widget_no_medicine_dose_due">மருந்து அளவு இல்லை</string>
+    <string name="medication_widget_shows_all">அனைத்து மருந்துகளும்</string>
+    <string name="medication_widget_configure_title">முகப்புத் திரை நிரல்</string>
+    <string name="medication_widget_configure_prompt">இந்த நிரல் எந்த மருந்தைக் காட்ட வேண்டும்?</string>
+    <string name="medication_widget_configure_done">நிரலைச் சேர்</string>
+</resources>

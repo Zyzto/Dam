@@ -358,30 +358,10 @@ class _AppState extends ConsumerState<App> with Loggable {
       _medCache = MedCache(_medRepo!, await _medRepo!.getAll());
     }
     try {
-      if (hc.medicineFeatureEnabled) {
-        final reminderRepo = ref.read(medicationScheduleRepositoryProvider);
-        final occurrences = await upcomingDoseOccurrences(reminderRepo);
-        final schedules = await reminderRepo.getAll();
-        await MedicationReminderRuntime.instance.syncSchedules(
-          schedules,
-          snoozedOccurrences: occurrences
-              .where((occurrence) => occurrence.status == 'snoozed')
-              .toList(),
-          openOccurrences: occurrences,
-          overdueReminderCount: hc.overdueReminderCount,
-          overdueReminderInterval: Duration(
-            minutes: hc.overdueReminderIntervalMinutes,
-          ),
-        );
-        await MedicationReminderRuntime.instance.updateWidget(
-          occurrences,
-          showAll: hc.showAllReminderRings,
-          schedules: schedules,
-        );
-      } else {
-        await MedicationReminderRuntime.instance.syncSchedules(const []);
-        await MedicationReminderRuntime.instance.updateWidget(const []);
-      }
+      await syncMedicationReminders(
+        ref.read(medicationScheduleRepositoryProvider),
+        hc,
+      );
     } catch (e, stack) {
       logWarning('Medication reminder refresh failed: $e\n$stack');
     }
@@ -452,6 +432,8 @@ class _AppRootState extends ConsumerState<_AppRoot> {
   final _settingsSearchOpen = ValueNotifier<bool>(false);
   StreamSubscription<MedicineIntake?>? _intakeClaims;
   DebugDataServer? _debugServer;
+  String? _syncedReminderLocale;
+  String? _appliedAppLocaleKey;
 
   @override
   void initState() {
@@ -469,14 +451,28 @@ class _AppRootState extends ConsumerState<_AppRoot> {
     _intakeClaims = ref.read(medicineIntakeRepositoryProvider).subscribe().listen((
       intake,
     ) {
+      final settings = ref.read(appSettingsProvider);
       final occurrenceId = intake?.occurrenceId;
-      if (occurrenceId == null) return;
-      unawaited(
-        MedicationReminderRuntime.instance.cancelClaimedDose(occurrenceId),
-      );
+      if (!settings.shiftMissedDoseTimes) {
+        if (occurrenceId == null) return;
+        unawaited(
+          MedicationReminderRuntime.instance.cancelClaimedDose(occurrenceId),
+        );
+        ref.invalidate(homeMedicationOccurrencesProvider);
+        ref.invalidate(todayMedicationOccurrencesProvider);
+        ref.invalidate(medicationDayProvider);
+        return;
+      }
+      if (occurrenceId != null) {
+        unawaited(
+          MedicationReminderRuntime.instance.cancelClaimedDose(occurrenceId),
+        );
+      }
       ref.invalidate(homeMedicationOccurrencesProvider);
       ref.invalidate(todayMedicationOccurrencesProvider);
       ref.invalidate(medicationDayProvider);
+      if (!mounted) return;
+      unawaited(_refreshMedicationRuntime(settings.medicineFeatureEnabled));
     });
   }
 
@@ -498,33 +494,33 @@ class _AppRootState extends ConsumerState<_AppRoot> {
     await _debugServer!.start();
   }
 
+  Future<void> _syncAndroidAppNameLocale(String languageKey) async {
+    if (!Platform.isAndroid) return;
+    final tag = switch (languageKey) {
+      'system' || '' => '',
+      'zh' => 'zh-CN',
+      _ => languageKey,
+    };
+    try {
+      await const MethodChannel(
+        'com.shenepoy.janan/app_locale',
+      ).invokeMethod<void>('set', {'tag': tag});
+    } on MissingPluginException {
+      // Desktop and tests do not expose the Android locale channel.
+    } on PlatformException {
+      // A locale the system rejects must not block the in-app language.
+    }
+  }
+
   Future<void> _refreshMedicationRuntime(bool enabled) async {
     try {
-      final runtime = MedicationReminderRuntime.instance;
       if (!enabled) {
-        await runtime.syncSchedules(const []);
-        await runtime.updateWidget(const []);
+        await clearMedicationReminders();
         return;
       }
-      final settings = ref.read(appSettingsProvider);
-      final repository = ref.read(medicationScheduleRepositoryProvider);
-      final occurrences = await upcomingDoseOccurrences(repository);
-      final schedules = await repository.getAll();
-      await runtime.syncSchedules(
-        schedules,
-        snoozedOccurrences: occurrences
-            .where((occurrence) => occurrence.status == 'snoozed')
-            .toList(),
-        openOccurrences: occurrences,
-        overdueReminderCount: settings.overdueReminderCount,
-        overdueReminderInterval: Duration(
-          minutes: settings.overdueReminderIntervalMinutes,
-        ),
-      );
-      await runtime.updateWidget(
-        occurrences,
-        showAll: settings.showAllReminderRings,
-        schedules: schedules,
+      await syncMedicationReminders(
+        ref.read(medicationScheduleRepositoryProvider),
+        ref.read(appSettingsProvider),
       );
     } catch (error, stack) {
       debugPrint('Medication reminder refresh failed: $error\n$stack');
@@ -558,14 +554,36 @@ class _AppRootState extends ConsumerState<_AppRoot> {
       if (previous == null) return;
       final remindersChanged =
           previous.medicineFeatureEnabled != next.medicineFeatureEnabled ||
+          previous.medicationNotificationsEnabled !=
+              next.medicationNotificationsEnabled ||
           previous.overdueReminderCount != next.overdueReminderCount ||
           previous.overdueReminderIntervalMinutes !=
               next.overdueReminderIntervalMinutes ||
+          previous.shiftMissedDoseTimes != next.shiftMissedDoseTimes ||
+          previous.missedDoseShiftLimitMinutes !=
+              next.missedDoseShiftLimitMinutes ||
           previous.showAllReminderRings != next.showAllReminderRings;
       if (remindersChanged) {
         unawaited(_refreshMedicationRuntime(next.medicineFeatureEnabled));
       }
     });
+    final languageKey = settings.languageKey;
+    if (_appliedAppLocaleKey != languageKey) {
+      _appliedAppLocaleKey = languageKey;
+      unawaited(_syncAndroidAppNameLocale(languageKey));
+    }
+    final localeTag = context.locale.toLanguageTag();
+    if (_syncedReminderLocale != localeTag) {
+      final hadLocale = _syncedReminderLocale != null;
+      _syncedReminderLocale = localeTag;
+      if (hadLocale) {
+        final enabled = settings.medicineFeatureEnabled;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || context.locale.toLanguageTag() != localeTag) return;
+          unawaited(_refreshMedicationRuntime(enabled));
+        });
+      }
+    }
     final isRtl = context.locale.languageCode == 'ar';
     return SafaehTheme(
       data: const SafaehThemeData(

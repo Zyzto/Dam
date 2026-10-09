@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Synchronizacja Bluetooth</string>
+    <string name="bluetooth_sync_channel_description">Utrzymuje synchronizację ciśnieniomierza przez Bluetooth</string>
+    <string name="bluetooth_sync_scanning">Skanuj urządzenia</string>
+</resources>

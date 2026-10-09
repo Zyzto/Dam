@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Bluetoothi sünkroonimine</string>
+    <string name="bluetooth_sync_channel_description">Hoiab vererõhuaparaadi Bluetoothi sünkroonimise aktiivsena</string>
+    <string name="bluetooth_sync_scanning">Otsime seadmeid</string>
+</resources>

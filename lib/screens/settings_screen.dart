@@ -522,7 +522,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     SettingsProviders settings,
     SettingDefinition<Object?> setting,
   ) {
-    final enabled = isSettingEnabled(settings, setting, ref);
+    var enabled = isSettingEnabled(settings, setting, ref);
+    if (setting.key == overdueReminderCountSetting.key ||
+        setting.key == overdueReminderIntervalSetting.key) {
+      enabled =
+          enabled &&
+          ref.watch(appSettingsProvider).medicationNotificationsEnabled;
+    }
     final title = setting.titleKey.tr();
     final subtitle = setting.subtitleKey?.tr();
 

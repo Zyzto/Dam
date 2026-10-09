@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Bluetooth-Abgleich</string>
+    <string name="bluetooth_sync_channel_description">Hält die Bluetooth-Synchronisierung des Messgeräts aktiv</string>
+    <string name="bluetooth_sync_scanning">Suche nach Geräten</string>
+</resources>

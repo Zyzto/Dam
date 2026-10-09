@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Sincronização Bluetooth</string>
+    <string name="bluetooth_sync_channel_description">Mantém ativa a sincronização Bluetooth do medidor</string>
+    <string name="bluetooth_sync_scanning">A procurar dispositivos</string>
+</resources>

@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Opomniki za zdravila iz Janan</string>
+    <string name="medication_widget_status_next_dose">NASL.</string>
+    <string name="medication_widget_status_all_set">KONČANO</string>
+    <string name="medication_widget_status_overdue">ZAMUDA</string>
+    <string name="medication_widget_status_snoozed">DREMEŽ</string>
+    <string name="medication_widget_status_soon">KMALU</string>
+    <string name="medication_widget_countdown_hour">1h</string>
+    <string name="medication_widget_now">zdaj</string>
+    <string name="medication_widget_hour_unit">h</string>
+    <string name="medication_widget_minute_unit">min</string>
+    <string name="medication_widget_medicine">Zdravilo</string>
+    <string name="medication_widget_no_dose_due">Ni odmerka</string>
+    <string name="medication_widget_no_medicine_dose_due">Ni odmerka zdravila</string>
+    <string name="medication_widget_shows_all">Vsa zdravila</string>
+    <string name="medication_widget_configure_title">Pripomoček na začetnem zaslonu</string>
+    <string name="medication_widget_configure_prompt">Katero zdravilo naj ta pripomoček prikazuje?</string>
+    <string name="medication_widget_configure_done">Dodaj pripomoček</string>
+</resources>

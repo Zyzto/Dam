@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Bluetooth-synchronisatie</string>
+    <string name="bluetooth_sync_channel_description">Houdt Bluetooth-synchronisatie van de meter actief</string>
+    <string name="bluetooth_sync_scanning">Scannen op apparaten</string>
+</resources>

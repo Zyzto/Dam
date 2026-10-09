@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Bluetooth sinchronizavimas</string>
+    <string name="bluetooth_sync_channel_description">Palaiko kraujospūdžio matuoklio Bluetooth sinchronizavimą</string>
+    <string name="bluetooth_sync_scanning">Ieškoma įrenginių</string>
+</resources>

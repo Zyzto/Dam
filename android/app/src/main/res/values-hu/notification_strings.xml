@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Bluetooth-szinkronizálás</string>
+    <string name="bluetooth_sync_channel_description">Aktívan tartja a vérnyomásmérő Bluetooth-szinkronizálását</string>
+    <string name="bluetooth_sync_scanning">Szkennelési eszközök</string>
+</resources>

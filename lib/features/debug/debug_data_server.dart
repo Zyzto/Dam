@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:blood_pressure_app/core/repository/repository_providers.dart';
 import 'package:blood_pressure_app/domain/domain.dart';
 import 'package:blood_pressure_app/features/medications/medication_reminder_providers.dart';
-import 'package:blood_pressure_app/features/medications/medication_reminder_runtime.dart';
 import 'package:blood_pressure_app/features/medications/medication_reminders_screens.dart';
 import 'package:blood_pressure_app/features/settings/app_settings.dart';
 import 'package:blood_pressure_app/features/settings/registry.dart';
@@ -345,29 +344,10 @@ Future<List<String>> clearTestMedicines(WidgetRef ref) async {
 Future<void> _refreshReminders(WidgetRef ref) async {
   final settings = ref.read(appSettingsProvider);
   final repository = ref.read(medicationScheduleRepositoryProvider);
-  final occurrences = await upcomingDoseOccurrences(repository);
-  final runtime = MedicationReminderRuntime.instance;
   if (!settings.medicineFeatureEnabled) {
-    await runtime.syncSchedules(const []);
-    await runtime.updateWidget(const []);
+    await clearMedicationReminders();
   } else {
-    final schedules = await repository.getAll();
-    await runtime.syncSchedules(
-      schedules,
-      snoozedOccurrences: occurrences
-          .where((occurrence) => occurrence.status == 'snoozed')
-          .toList(),
-      openOccurrences: occurrences,
-      overdueReminderCount: settings.overdueReminderCount,
-      overdueReminderInterval: Duration(
-        minutes: settings.overdueReminderIntervalMinutes,
-      ),
-    );
-    await runtime.updateWidget(
-      occurrences,
-      showAll: settings.showAllReminderRings,
-      schedules: schedules,
-    );
+    await syncMedicationReminders(repository, settings);
   }
   ref.invalidate(medicationSchedulesProvider);
   ref.invalidate(homeMedicationOccurrencesProvider);

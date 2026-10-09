@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">Vaistų priminimai iš Janan</string>
+    <string name="medication_widget_status_next_dose">KITA</string>
+    <string name="medication_widget_status_all_set">ATLIKTA</string>
+    <string name="medication_widget_status_overdue">VĖLUOJA</string>
+    <string name="medication_widget_status_snoozed">ATIDĖTA</string>
+    <string name="medication_widget_status_soon">GREITAI</string>
+    <string name="medication_widget_countdown_hour">1h</string>
+    <string name="medication_widget_now">dabar</string>
+    <string name="medication_widget_hour_unit">h</string>
+    <string name="medication_widget_minute_unit">min</string>
+    <string name="medication_widget_medicine">Vaistas</string>
+    <string name="medication_widget_no_dose_due">Dozės nėra</string>
+    <string name="medication_widget_no_medicine_dose_due">Vaisto dozės nėra</string>
+    <string name="medication_widget_shows_all">Visi vaistai</string>
+    <string name="medication_widget_configure_title">Pradžios ekrano valdiklis</string>
+    <string name="medication_widget_configure_prompt">Kurį vaistą rodyti šiame valdiklyje?</string>
+    <string name="medication_widget_configure_done">Pridėti valdiklį</string>
+</resources>

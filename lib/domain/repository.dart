@@ -66,6 +66,12 @@ abstract class MedicationScheduleRepository {
   /// Get doses recorded as taken whose scheduled time falls in [range].
   Future<List<DoseOccurrence>> getTakenOccurrences(DateRange range);
 
+  /// Saved dose rows in [range], without creating missing ones.
+  ///
+  /// A day the app never opened has no row, so a miss from that day is not
+  /// invented. Callers decide which statuses to keep.
+  Future<List<DoseOccurrence>> getExistingOccurrences(DateRange range);
+
   /// Change an occurrence state and, when taken, add a linked medicine intake.
   Future<void> setOccurrenceStatus(
     DoseOccurrence occurrence,

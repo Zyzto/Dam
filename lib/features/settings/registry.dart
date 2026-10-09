@@ -411,7 +411,7 @@ const roundedReminderButtonSetting = BoolSetting(
   titleKey: 'useRoundedSquareReminderButton',
   icon: Icons.rounded_corner,
   section: 'medications',
-  order: 5,
+  order: 8,
 );
 
 const preferredPressureUnitSetting = EnumSetting(
@@ -629,6 +629,22 @@ const medicationsAction = ActionSetting(
   order: 1,
 );
 
+const medicationNotificationsEnabledSetting = BoolSetting(
+  'medication_notifications_enabled',
+  defaultValue: true,
+  titleKey: 'medicationNotifications',
+  subtitleKey: 'medicationNotificationsDesc',
+  icon: Icons.notifications_outlined,
+  section: 'medications',
+  order: 2,
+  dependsOn: 'medicine_feature_enabled',
+  enabledWhen: true,
+  searchTerms: {
+    'en': ['notification', 'alert', 'reminder', 'disable'],
+    'ar': ['تنبيه', 'إشعار', 'تذكير'],
+  },
+);
+
 const overdueReminderCountSetting = IntSetting(
   'overdue_reminder_count',
   defaultValue: 3,
@@ -636,7 +652,7 @@ const overdueReminderCountSetting = IntSetting(
   subtitleKey: 'overdueReminderCountDesc',
   icon: Icons.notifications_active_outlined,
   section: 'medications',
-  order: 2,
+  order: 3,
   min: 0,
   max: 6,
   step: 1,
@@ -651,11 +667,42 @@ const overdueReminderIntervalSetting = IntSetting(
   subtitleKey: 'overdueReminderIntervalDesc',
   icon: Icons.timer_outlined,
   section: 'medications',
-  order: 3,
+  order: 4,
   min: 1,
   max: 120,
   step: 1,
   dependsOn: 'medicine_feature_enabled',
+  enabledWhen: true,
+);
+
+const shiftMissedDoseTimesSetting = BoolSetting(
+  'shift_missed_dose_times',
+  defaultValue: false,
+  titleKey: 'shiftMissedDoseTimes',
+  subtitleKey: 'shiftMissedDoseTimesDesc',
+  icon: Icons.update,
+  section: 'medications',
+  order: 5,
+  dependsOn: 'medicine_feature_enabled',
+  enabledWhen: true,
+  searchTerms: {
+    'en': ['missed', 'late', 'move', 'shift', 'reschedule'],
+    'ar': ['فائت', 'تأخير', 'تحريك', 'موعد'],
+  },
+);
+
+const missedDoseShiftLimitSetting = IntSetting(
+  'missed_dose_shift_limit_minutes',
+  defaultValue: 60,
+  titleKey: 'missedDoseShiftLimit',
+  subtitleKey: 'missedDoseShiftLimitDesc',
+  icon: Icons.timelapse,
+  section: 'medications',
+  order: 6,
+  min: 15,
+  max: 360,
+  step: 15,
+  dependsOn: 'shift_missed_dose_times',
   enabledWhen: true,
 );
 
@@ -666,7 +713,7 @@ const showAllReminderRingsSetting = BoolSetting(
   subtitleKey: 'showAllReminderRingsDesc',
   icon: Icons.donut_large_outlined,
   section: 'medications',
-  order: 4,
+  order: 7,
   dependsOn: 'medicine_feature_enabled',
   enabledWhen: true,
 );
@@ -886,8 +933,11 @@ SettingsRegistry createAppSettingsRegistry() => SettingsRegistry.withSettings(
     knownBleDevicesSetting,
     bodyProfileAction,
     medicationsAction,
+    medicationNotificationsEnabledSetting,
     overdueReminderCountSetting,
     overdueReminderIntervalSetting,
+    shiftMissedDoseTimesSetting,
+    missedDoseShiftLimitSetting,
     showAllReminderRingsSetting,
     debugDataServerSetting,
     bluetoothDevicesAction,

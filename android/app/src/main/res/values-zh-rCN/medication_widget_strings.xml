@@ -1,0 +1,19 @@
+<resources>
+    <string name="medication_widget_description">贾南的用药提醒</string>
+    <string name="medication_widget_status_next_dose">下次</string>
+    <string name="medication_widget_status_all_set">完成</string>
+    <string name="medication_widget_status_overdue">逾期</string>
+    <string name="medication_widget_status_snoozed">推迟</string>
+    <string name="medication_widget_status_soon">即将</string>
+    <string name="medication_widget_countdown_hour">1时</string>
+    <string name="medication_widget_now">现在</string>
+    <string name="medication_widget_hour_unit">时</string>
+    <string name="medication_widget_minute_unit">分</string>
+    <string name="medication_widget_medicine">药物</string>
+    <string name="medication_widget_no_dose_due">没有待服剂量</string>
+    <string name="medication_widget_no_medicine_dose_due">没有待服药物</string>
+    <string name="medication_widget_shows_all">所有药物</string>
+    <string name="medication_widget_configure_title">主屏幕小组件</string>
+    <string name="medication_widget_configure_prompt">这个小组件要显示哪种药物？</string>
+    <string name="medication_widget_configure_done">添加小组件</string>
+</resources>

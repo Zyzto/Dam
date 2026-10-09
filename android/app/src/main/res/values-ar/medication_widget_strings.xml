@@ -1,5 +1,5 @@
 <resources>
-    <string name="medication_widget_description">تذكيرات الأدوية من جنان</string>
+    <string name="medication_widget_description">تذكيرات الأدوية من الجنان</string>
     <string name="medication_widget_status_next_dose">التالي</string>
     <string name="medication_widget_status_all_set">تم</string>
     <string name="medication_widget_status_overdue">متأخرة</string>

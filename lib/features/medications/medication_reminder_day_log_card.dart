@@ -6,9 +6,11 @@ class _DayLogCard extends StatelessWidget {
     required this.onTaken,
     required this.onSkip,
     required this.onSnooze,
+    this.shiftedTo,
   });
 
   final DoseOccurrence occurrence;
+  final DateTime? shiftedTo;
   final VoidCallback onTaken;
   final VoidCallback onSkip;
   final VoidCallback onSnooze;
@@ -25,9 +27,26 @@ class _DayLogCard extends StatelessWidget {
         ? theme.colorScheme.primary
         : Color(rawColor);
     final status = _historyStatus(context, occurrence, now);
-    final time = localizations.formatTimeOfDay(
+    final originalTime = localizations.formatTimeOfDay(
       TimeOfDay.fromDateTime(occurrence.scheduledAt),
     );
+    final shifted = shiftedTo;
+    final dueNow =
+        shifted != null &&
+        !shifted.isAfter(now) &&
+        !_sameClockMinute(shifted, occurrence.scheduledAt);
+    final movedAhead =
+        shifted != null &&
+        shifted.isAfter(now) &&
+        !_sameClockMinute(shifted, occurrence.scheduledAt);
+    final time = dueNow
+        ? _t('reminderDueNow', 'Due now')
+        : localizations.formatTimeOfDay(
+            TimeOfDay.fromDateTime(
+              movedAhead ? shifted : occurrence.scheduledAt,
+            ),
+          );
+    final movedFrom = dueNow || movedAhead ? _movedFromLabel(originalTime) : null;
     final minute =
         occurrence.scheduledAt.hour * 60 + occurrence.scheduledAt.minute;
     final timing = schedule.timingForMinute(minute);
@@ -127,6 +146,15 @@ class _DayLogCard extends StatelessWidget {
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              if (movedFrom != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  movedFrom,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

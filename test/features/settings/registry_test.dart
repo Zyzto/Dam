@@ -62,8 +62,11 @@ void main() {
     expect(main('medications'), [
       'medicine_feature_enabled',
       'medications',
+      'medication_notifications_enabled',
       'overdue_reminder_count',
       'overdue_reminder_interval_minutes',
+      'shift_missed_dose_times',
+      'missed_dose_shift_limit_minutes',
       'show_all_reminder_rings',
       'rounded_reminder_button',
     ]);

@@ -1,0 +1,5 @@
+<resources>
+    <string name="bluetooth_sync_channel_name">Bluetooth eşitleme</string>
+    <string name="bluetooth_sync_channel_description">Tansiyon aletinin Bluetooth eşitlemesini açık tutar</string>
+    <string name="bluetooth_sync_scanning">Aygıtlar taranıyor</string>
+</resources>
