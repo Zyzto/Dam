@@ -587,10 +587,11 @@ packages:
   flutter_settings_framework:
     dependency: "direct main"
     description:
-      path: "../edadat"
-      relative: true
-    source: path
-    version: "0.9.0"
+      name: flutter_settings_framework
+      sha256: "15d9518b42708cc241c5725946d766bf59510a1e6d9570d1c7397f1fa17d7fcd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.10.0"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -1150,10 +1151,11 @@ packages:
   safaeh:
     dependency: "direct main"
     description:
-      path: "../Safaeh"
-      relative: true
-    source: path
-    version: "0.8.2"
+      name: safaeh
+      sha256: cd9aa46b4d8d999a803a35c40c46787ac0822b86d605f9574c1bbc45f10d757b
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.9.0"
   share_plus:
     dependency: "direct main"
     description:

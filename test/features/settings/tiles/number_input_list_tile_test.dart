@@ -1,6 +1,6 @@
-import 'package:blood_pressure_app/components/input_dialog.dart';
 import 'package:blood_pressure_app/features/settings/tiles/number_input_list_tile.dart';
 import 'package:flutter/material.dart';
+import 'package:safaeh/safaeh.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../util.dart';
@@ -27,15 +27,15 @@ void main() {
       },
     ),),);
 
-    expect(find.byType(InputDialog), findsNothing);
+    expect(find.byType(SafaehTextInputSheet), findsNothing);
     await tester.tap(find.byType(NumberInputListTile));
     await tester.pumpAndSettle();
 
-    expect(find.byType(InputDialog), findsOneWidget);
+    expect(find.byType(SafaehTextInputSheet), findsOneWidget);
     await tester.tapAt(const Offset(0, 0));
     await tester.pumpAndSettle();
 
-    expect(find.byType(InputDialog), findsNothing);
+    expect(find.byType(SafaehTextInputSheet), findsNothing);
   });
   testWidgets('should prefill value on edit', (tester) async {
     await pumpApp(tester, await materialApp(NumberInputListTile(
@@ -105,7 +105,7 @@ void main() {
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(InputDialog), findsNothing);
+    expect(find.byType(SafaehTextInputSheet), findsNothing);
     expect(callCount, 4);
   });
 }

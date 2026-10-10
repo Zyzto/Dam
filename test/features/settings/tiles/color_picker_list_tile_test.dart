@@ -128,9 +128,9 @@ void main() {
     await tester.tap(find.byType(ListTile));
     await tester.pumpAndSettle();
     expect(find.byType(ColorPicker), findsOneWidget);
-    expect(find.bySemanticsLabel('#F44336'), findsWidgets);
+    expect(find.byElementPredicate(findColored(Colors.red)), findsOneWidget);
 
-    await tester.tap(find.bySemanticsLabel('#F44336'));
+    await tester.tap(find.byElementPredicate(findColored(Colors.red)));
     await tester.pumpAndSettle();
 
     expect(selected?.toARGB32(), Colors.red.toARGB32());
@@ -157,15 +157,16 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byType(ColorPicker), findsOneWidget);
-    expect(find.bySemanticsLabel('#F44336'), findsWidgets);
+    expect(find.byElementPredicate(findColored(Colors.red)), findsOneWidget);
     expect(find.text('OK'), findsNothing);
     expect(find.text('Cancel'), findsNothing);
   });
 }
 
 /// Finds the widget with a specific color inside a [ColorPicker], when put into a [CommonFinders.byElementPredicate].
-bool Function(Element e) findColored(Color color) =>
-    (e) =>
-        e.widget is Container &&
-        (e.widget as Container).decoration is BoxDecoration &&
-        ((e.widget as Container).decoration as BoxDecoration).color == color;
+bool Function(Element e) findColored(Color color) => (e) {
+  final widget = e.widget;
+  return widget is Container &&
+      widget.decoration is BoxDecoration &&
+      (widget.decoration as BoxDecoration).color == color;
+};

@@ -256,7 +256,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (subKey != null && subKey.isNotEmpty) {
         final expanded = _isSubSectionExpanded(sectionKey, subKey);
         result.add(
-          _CollapsibleSubSection(
+          SettingsCollapsibleSubsection(
             title: subKey.tr(),
             expanded: expanded,
             onToggle: () =>
@@ -836,72 +836,5 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (context.mounted) context.showError('invalidZip'.tr());
       Log.warning('invalid zip', error: e, stackTrace: stack);
     }
-  }
-}
-
-/// A settings group under a card, such as Advanced, that starts closed.
-class _CollapsibleSubSection extends StatelessWidget {
-  const _CollapsibleSubSection({
-    required this.title,
-    required this.expanded,
-    required this.onToggle,
-    required this.children,
-  });
-
-  final String title;
-  final bool expanded;
-  final VoidCallback onToggle;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        InkWell(
-          onTap: onToggle,
-          child: Semantics(
-            button: true,
-            expanded: expanded,
-            label: title,
-            excludeSemantics: true,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.expand_more,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          alignment: Alignment.topCenter,
-          child: expanded
-              ? Column(children: children)
-              : const SizedBox(width: double.infinity, height: 16),
-        ),
-      ],
-    );
   }
 }

@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart';
+import 'package:safaeh/safaeh.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -63,7 +64,7 @@ class ErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
       title: 'Critical error',
-      builder: (context, child) => AppToastHost(
+      builder: (context, child) => SafaehFeedbackHost(
         child: child ?? const SizedBox.shrink(),
       ),
       home: Scaffold(

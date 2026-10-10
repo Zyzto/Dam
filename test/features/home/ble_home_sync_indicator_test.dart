@@ -287,6 +287,29 @@ void main() {
     expect(icon.color, Colors.white70);
   });
 
+  testWidgets('starts another scan when tapped after the meter was not found', (
+    tester,
+  ) async {
+    var resumed = false;
+    final view = BleLaunchSyncView()
+      ..setProgress(
+        const BleLaunchSyncProgress(
+          phase: BleLaunchSyncPhase.done,
+          result: BleLaunchSyncResult(status: BleLaunchSyncStatus.notFound),
+        ),
+      );
+    view.onResume = () {
+      resumed = true;
+    };
+    await pumpApp(tester, await _indicator(view));
+
+    await tester.tap(find.byType(BleHomeSyncIndicator));
+    await tester.pump();
+
+    expect(resumed, isTrue);
+    expect(view.detailsOpen, isFalse);
+  });
+
   testWidgets('shows 0 when no meter was found', (tester) async {
     final view = BleLaunchSyncView()
       ..setProgress(const BleLaunchSyncProgress(

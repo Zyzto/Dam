@@ -463,14 +463,6 @@ void main() {
 
     await tester.tap(find.byType(BleHomeSyncIndicator));
     await tester.pump();
-    expect(
-      find.text('Meter not found', skipOffstage: false),
-      findsWidgets,
-    );
-    expect(find.byTooltip('Search again'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Search again'));
-    await tester.pump();
     await tester.pump();
     expect(syncs, hasLength(2));
     expect(find.byIcon(Icons.sync), findsOneWidget);

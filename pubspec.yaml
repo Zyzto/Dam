@@ -5,7 +5,7 @@ repository: https://github.com/Zyzto/blood-pressure-monitor-fl
 issue_tracker: https://github.com/Zyzto/blood-pressure-monitor-fl/issues
 
 # CalVer YY.0M.MICRO+BUILD (docs/release-process.md)
-version: 26.10.3+76
+version: 26.10.4+77
 
 environment:
   sdk: ^3.12.0
@@ -38,9 +38,9 @@ dependencies:
   archive: ^4.0.9
   file_picker: ^12.0.0
   app_settings: ^9.0.0
-  safaeh: ^0.8.2
+  safaeh: ^0.9.0
   toastification: ^3.0.3
-  flutter_settings_framework: ^0.9.0
+  flutter_settings_framework: ^0.10.0
   flutter_logging_service: ^0.2.3
   easy_localization: ^3.0.8
   persistent_user_dir_access_android: ^0.0.3
@@ -68,8 +68,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  shaders:
-    - shaders/medication_genie.frag
   assets:
     - assets/translations/
     - assets/fonts/NotoSans-Regular.ttf
@@ -80,11 +78,6 @@ flutter:
     - assets/fonts/NotoSansTamil-Bold.ttf
     - assets/fonts/NotoSansSC.ttf
     - icon.svg
-
-# Hosted settings 0.9.0 still constrains safaeh to ^0.5.0. The home filter
-# uses SafaehAnchoredDropdownChip.iconOnly, which shipped in 0.8.2.
-dependency_overrides:
-  safaeh: 0.8.2
 
 hooks:
   user_defines:

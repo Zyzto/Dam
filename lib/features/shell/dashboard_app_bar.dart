@@ -56,7 +56,9 @@ class DashboardAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final settings = ref.watch(appSettingsProvider);
     final showFilter =
         settings.medicineFeatureEnabled && settings.bloodPressureEnabled;
-    final slot = showFilter ? kToolbarHeight + 48 : kToolbarHeight;
+    final slot = showFilter
+        ? BleHomeSyncIndicator.slotWidth + 48
+        : BleHomeSyncIndicator.slotWidth;
     return SafaehMorphingAppBar(
       page: page,
       titles: [for (final key in titleKeys) Text(key.tr())],
@@ -67,7 +69,7 @@ class DashboardAppBar extends ConsumerWidget implements PreferredSizeWidget {
       actionSlotWidth: slot,
       actionsBuilder: (context, currentPage) => _ShellAppBarAction(
         page: currentPage,
-        settingsPage: titleKeys.length - 1,
+        settingsPage: _hasSettings ? (titleKeys.length - 1).toDouble() : null,
         settingsSearchOpen: settingsSearchOpen,
         onSettingsSearch: onSettingsSearch,
         showFilter: showFilter,
@@ -93,41 +95,82 @@ class _ShellAppBarAction extends StatelessWidget {
   });
 
   final double page;
-  final double settingsPage;
+
+  /// Settings tab, when this shell has one. Null keeps Bluetooth visible on
+  /// every page.
+  final double? settingsPage;
   final ValueNotifier<bool>? settingsSearchOpen;
   final VoidCallback? onSettingsSearch;
   final bool showFilter;
 
+  /// Full on measurements, weight, and statistics. Fades only into settings.
+  double get _dataOpacity {
+    final settings = settingsPage;
+    if (settings == null) return 1;
+    return (settings - page).clamp(0.0, 1.0);
+  }
+
+  /// The measurement filter belongs to the measurements tab.
+  double get _filterOpacity => (1.0 - page).clamp(0.0, 1.0);
+
   @override
-  Widget build(BuildContext context) => Stack(
-    alignment: AlignmentDirectional.centerEnd,
-    children: [
-      SafaehMorphingAppBarAction(
-        page: page,
-        targetPage: 0,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const _BleHomeAction(),
-            if (showFilter) const _MeasurementFilterAction(),
-          ],
-        ),
-      ),
-      if (settingsSearchOpen != null && onSettingsSearch != null)
-        ValueListenableBuilder<bool>(
-          valueListenable: settingsSearchOpen!,
-          builder: (context, isOpen, _) => SafaehMorphingAppBarAction(
-            page: page,
-            targetPage: settingsPage,
-            child: SafaehSettingsSearchButton(
-              isOpen: isOpen,
-              hintText: 'searchSettings'.tr(),
-              onPressed: onSettingsSearch!,
+  Widget build(BuildContext context) {
+    final dataOpacity = _dataOpacity;
+    final filterOpacity = _filterOpacity;
+    final settings = settingsPage;
+    return Stack(
+      alignment: AlignmentDirectional.centerEnd,
+      children: [
+        ExcludeSemantics(
+          excluding: dataOpacity < 0.5,
+          child: IgnorePointer(
+            ignoring: dataOpacity < 0.5,
+            child: Opacity(
+              opacity: dataOpacity,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _BleHomeAction(),
+                  if (showFilter)
+                    ExcludeSemantics(
+                      excluding: filterOpacity < 0.5,
+                      child: IgnorePointer(
+                        ignoring: filterOpacity < 0.5,
+                        child: ClipRect(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            widthFactor: filterOpacity,
+                            child: Opacity(
+                              opacity: filterOpacity,
+                              child: const _MeasurementFilterAction(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
-    ],
-  );
+        if (settings != null &&
+            settingsSearchOpen != null &&
+            onSettingsSearch != null)
+          ValueListenableBuilder<bool>(
+            valueListenable: settingsSearchOpen!,
+            builder: (context, isOpen, _) => SafaehMorphingAppBarAction(
+              page: page,
+              targetPage: settings,
+              child: SafaehSettingsSearchButton(
+                isOpen: isOpen,
+                hintText: 'searchSettings'.tr(),
+                onPressed: onSettingsSearch!,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _BleHomeAction extends StatelessWidget {

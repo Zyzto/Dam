@@ -14,6 +14,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_settings_framework/flutter_settings_framework.dart';
+import 'package:safaeh/safaeh.dart';
 
 /// Tracks where the app is relative to the auto-sync area.
 class HomePresenceObserver extends NavigatorObserver with ChangeNotifier {
@@ -547,15 +548,10 @@ class _BleLaunchSyncOverlayHost extends StatefulWidget {
       _BleLaunchSyncOverlayHostState();
 }
 
-class _BleLaunchSyncOverlayHostState extends State<_BleLaunchSyncOverlayHost>
-    with SingleTickerProviderStateMixin {
+class _BleLaunchSyncOverlayHostState extends State<_BleLaunchSyncOverlayHost> {
   BleLaunchSyncView? _view;
-  OverlayEntry? _entry;
-  late final AnimationController _transition = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 320),
-    reverseDuration: const Duration(milliseconds: 220),
-  )..addListener(_refreshEntry);
+  bool _routeOpen = false;
+  bool _closing = false;
 
   @override
   void didChangeDependencies() {
@@ -577,163 +573,56 @@ class _BleLaunchSyncOverlayHostState extends State<_BleLaunchSyncOverlayHost>
 
   void _syncOverlay() {
     final view = _view;
-    if (view == null) return;
+    if (view == null || !mounted) return;
     if (_shouldShow) {
-      if (_entry == null) {
-        _entry = OverlayEntry(
-          builder: (context) =>
-              _BleLaunchSyncAttachedPanel(view: view, transition: _transition),
-        );
-        Overlay.of(context, rootOverlay: true).insert(_entry!);
-      }
-      _transition.forward();
-    } else if (_entry != null) {
-      _transition.reverse().then((_) {
-        if (mounted && !_shouldShow) _removeEntry();
-      });
+      if (_routeOpen) return;
+      _routeOpen = true;
+      _closing = false;
+      unawaited(_open(view, _indicatorRect(view.indicatorKey)));
+      return;
     }
-    _refreshEntry();
+    if (_routeOpen && !_closing) {
+      _closing = true;
+      Navigator.of(context, rootNavigator: true).pop();
+    }
   }
 
-  void _refreshEntry() => _entry?.markNeedsBuild();
+  Future<void> _open(BleLaunchSyncView view, Rect? sourceRect) async {
+    await showSafaehAnchored<void>(
+      context: context,
+      motion: SafaehAnchoredMotion.fadeScale,
+      link: view.indicatorLink,
+      sourceRect: sourceRect,
+      child: ListenableBuilder(
+        listenable: view,
+        builder: (context, _) => BleLaunchSyncCard(
+          progress: view.progress,
+          paused: view.paused,
+          onClosed: view.closeDetails,
+          onPause: view.onPause,
+          onResume: view.onResume,
+        ),
+      ),
+    );
+    _routeOpen = false;
+    _closing = false;
+    if (mounted) view.closeDetails();
+  }
 
-  void _removeEntry() {
-    _entry?.remove();
-    _entry?.dispose();
-    _entry = null;
+  Rect? _indicatorRect(GlobalKey key) {
+    final target = key.currentContext?.findRenderObject();
+    if (target is! RenderBox || !target.hasSize || !target.attached) {
+      return null;
+    }
+    return target.localToGlobal(Offset.zero) & target.size;
   }
 
   @override
   void dispose() {
     _view?.removeListener(_syncOverlay);
-    _removeEntry();
-    _transition.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => widget.child ?? const SizedBox.shrink();
-}
-
-class _BleLaunchSyncAttachedPanel extends StatelessWidget {
-  const _BleLaunchSyncAttachedPanel({
-    required this.view,
-    required this.transition,
-  });
-
-  final BleLaunchSyncView view;
-  final Animation<double> transition;
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    // AppBar actions sit on the end edge. Anchor the panel there so Arabic
-    // (RTL) grows the card inward instead of off the leading side. A trailing
-    // filter insets that anchor, so shift the card back inside the screen.
-    final direction = Directionality.of(context);
-    final topEnd = AlignmentDirectional.topEnd.resolve(direction);
-    final bottomEnd = AlignmentDirectional.bottomEnd.resolve(direction);
-    final endIsRight = topEnd == Alignment.topRight;
-    final placement = _syncPanelPlacement(
-      screenWidth: screenWidth,
-      anchorEnd: _indicatorAnchorEnd(view.indicatorKey, endIsRight: endIsRight),
-      endIsRight: endIsRight,
-    );
-    return AnimatedBuilder(
-      animation: transition,
-      builder: (context, _) => Stack(
-        fit: StackFit.expand,
-        clipBehavior: Clip.none,
-        children: [
-          ModalBarrier(
-            color: Colors.black.withValues(alpha: 0.54 * transition.value),
-            dismissible: true,
-            onDismiss: view.closeDetails,
-            semanticsLabel: MaterialLocalizations.of(
-              context,
-            ).modalBarrierDismissLabel,
-          ),
-          Align(
-            alignment: topEnd,
-            child: CompositedTransformFollower(
-              link: view.indicatorLink,
-              showWhenUnlinked: false,
-              targetAnchor: bottomEnd,
-              followerAnchor: topEnd,
-              offset: Offset(placement.dx, 12),
-              child: Opacity(
-                opacity: transition.value,
-                child: Transform.scale(
-                  alignment: topEnd,
-                  scale: 0.9 + transition.value * 0.1,
-                  child: SizedBox(
-                    width: placement.width,
-                    child: BleLaunchSyncCard(
-                      progress: view.progress,
-                      paused: view.paused,
-                      onClosed: view.closeDetails,
-                      onPause: view.onPause,
-                      onResume: view.onResume,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SyncPanelPlacement {
-  const _SyncPanelPlacement({required this.width, required this.dx});
-
-  final double width;
-  final double dx;
-}
-
-double? _indicatorAnchorEnd(GlobalKey key, {required bool endIsRight}) {
-  final target = key.currentContext?.findRenderObject();
-  if (target is! RenderBox || !target.hasSize || !target.attached) return null;
-  final origin = target.localToGlobal(Offset.zero);
-  return endIsRight ? origin.dx + target.size.width : origin.dx;
-}
-
-/// Keeps a card anchored to [anchorEnd] inside the screen.
-///
-/// The measurement filter sits outside the Bluetooth indicator, so a card as
-/// wide as the screen overflows the opposite edge. Shift it back in. The card
-/// already insets its own contents, so the outer box may sit on the screen edge.
-_SyncPanelPlacement _syncPanelPlacement({
-  required double screenWidth,
-  required double? anchorEnd,
-  required bool endIsRight,
-}) {
-  final full = screenWidth - 24;
-  var width = full < 420 ? full : 420.0;
-  if (width < 0) width = 0;
-  if (anchorEnd == null || screenWidth <= 0) {
-    return _SyncPanelPlacement(width: width, dx: 0);
-  }
-
-  var start = endIsRight ? anchorEnd - width : anchorEnd;
-  var end = start + width;
-  if (start < 0) {
-    final shift = -start;
-    start += shift;
-    end += shift;
-  }
-  if (end > screenWidth) {
-    final shift = end - screenWidth;
-    start -= shift;
-    end -= shift;
-  }
-  if (start < 0) {
-    start = 0;
-    width = screenWidth;
-    end = screenWidth;
-  }
-  final aligned = endIsRight ? end : start;
-  return _SyncPanelPlacement(width: width, dx: aligned - anchorEnd);
 }

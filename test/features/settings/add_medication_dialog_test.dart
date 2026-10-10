@@ -56,7 +56,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.bySemanticsLabel('#F44336'), findsOneWidget);
+    expect(find.byWidgetPredicate(_isRedSwatch), findsOneWidget);
   });
 
   testWidgets('localizes the unit dropdown and keeps it trailing in RTL', (
@@ -91,4 +91,10 @@ void main() {
     expect(find.text('Please enter a name'), findsOneWidget);
     expect(find.byType(AddMedicationDialog), findsOneWidget);
   });
+}
+
+bool _isRedSwatch(Widget widget) {
+  if (widget is! AnimatedContainer) return false;
+  final decoration = widget.decoration;
+  return decoration is BoxDecoration && decoration.color == Colors.red;
 }

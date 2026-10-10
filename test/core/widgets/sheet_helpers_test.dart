@@ -1,6 +1,5 @@
 import 'package:blood_pressure_app/core/layout/responsive_sheet.dart';
 import 'package:blood_pressure_app/core/widgets/sheet_helpers.dart';
-import 'package:blood_pressure_app/core/widgets/sheet_option_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safaeh/safaeh.dart';
@@ -48,7 +47,7 @@ void main() {
       findsNothing,
     );
     expect(find.text('Second'), findsOneWidget);
-    expect(find.byType(SheetOptionTile), findsNWidgets(2));
+    expect(find.byType(SafaehLabeledOptionTile), findsNWidgets(2));
 
     await tester.tap(find.text('Second'));
     await tester.pumpAndSettle();
@@ -94,10 +93,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('safaeh_drag_handle')), findsOneWidget);
-    expect(find.byType(SheetOptionTile), findsNWidgets(2));
+    expect(find.byType(SafaehLabeledOptionTile), findsNWidgets(2));
     expect(
       tester
-          .widget<SheetOptionTile>(find.widgetWithText(SheetOptionTile, 'Skip'))
+          .widget<SafaehLabeledOptionTile>(find.widgetWithText(SafaehLabeledOptionTile, 'Skip'))
           .destructive,
       isTrue,
     );

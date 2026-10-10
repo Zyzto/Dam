@@ -190,7 +190,7 @@ void main() {
     expect(find.byType(GraphScreen), findsNothing);
     await tester.tap(find.text('Open Settings'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 700));
     expect(find.byType(GraphScreen), findsOneWidget);
   });
   testWidgets('Not displaying bigGraphSplit warning when splitting is disabled', (tester) async {

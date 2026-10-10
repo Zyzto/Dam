@@ -9,10 +9,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Compact AppBar control for a launch-time meter sync.
 ///
 /// Each stage has its own icon. After sync finishes the Bluetooth icon stays
-/// with a result color instead of disappearing.
+/// with a result color instead of disappearing. A tap opens the status card,
+/// except after the one-minute search ends without a meter: that tap starts
+/// the search again.
 class BleHomeSyncIndicator extends ConsumerWidget {
   /// Create a home AppBar sync indicator.
   const BleHomeSyncIndicator({super.key});
+
+  /// Width reserved in the app bar, including the gap before a trailing action.
+  static const double slotWidth = 64;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -59,7 +64,7 @@ class BleHomeSyncIndicator extends ConsumerWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 56, minHeight: 56),
               child: InkWell(
-                onTap: view.openDetails,
+                onTap: () => _onIndicatorTap(view, progress),
                 borderRadius: BorderRadius.circular(16),
                 child: Center(
                   child: Padding(
@@ -207,6 +212,21 @@ class BleHomeSyncIndicator extends ConsumerWidget {
       BleLaunchSyncPhase.idle || BleLaunchSyncPhase.done => 'syncingMeter'.tr(),
     };
   }
+}
+
+/// After the one-minute search finds nothing, a tap runs it again.
+/// Otherwise the tap opens the status card.
+void _onIndicatorTap(BleLaunchSyncView view, BleLaunchSyncProgress progress) {
+  final retryAfterTimeout =
+      view.onResume != null &&
+      !view.paused &&
+      !progress.isBusy &&
+      progress.result?.status == BleLaunchSyncStatus.notFound;
+  if (retryAfterTimeout) {
+    view.onResume!();
+    return;
+  }
+  view.openDetails();
 }
 
 class _StageStyle {

@@ -21,7 +21,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:safaeh/safaeh.dart';
 
-part 'medication_modal_scrim_painter.dart';
 part 'medication_reminder_dose_action_buttons.dart';
 part 'medication_reminder_glass_bottom_action.dart';
 part 'medication_reminder_day_page_header.dart';
@@ -29,26 +28,16 @@ part 'medication_reminder_day_log_page.dart';
 part 'medication_reminder_collapsed_taken_log.dart';
 part 'medication_reminder_day_log_card.dart';
 
-/// Gap between the settled dose card and the top of the reminder button.
-const _dosePanelAboveGap = 8.0;
-
-/// Warp ends first. The lift and shadow finish after that, and the animation
-/// value keeps going so the last frames are already the settled card.
-const _dosePanelWarpEnd = 0.84;
-const _dosePanelLiftEnd = 0.90;
-const _dosePanelShadowEnd = 0.94;
-
-/// The funnel stays on the button's top edge, then the card rises into this gap.
-double _dosePanelLift(double progress) {
-  final t = ((progress - 0.48) / (_dosePanelLiftEnd - 0.48)).clamp(0.0, 1.0);
-  return _dosePanelAboveGap * Curves.easeOut.transform(t);
-}
-
-double _dosePanelElevation(double progress) {
-  final t = ((progress - _dosePanelWarpEnd) / (_dosePanelShadowEnd - _dosePanelWarpEnd))
-      .clamp(0.0, 1.0);
-  return 12 * Curves.easeOut.transform(t);
-}
+ShapeBorder _medicationFabShape(
+  ThemeData theme, {
+  required bool compact,
+  required bool roundedSquare,
+}) => compact && roundedSquare
+    ? theme.floatingActionButtonTheme.shape ??
+          const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+          )
+    : const CircleBorder();
 
 Future<List<DoseOccurrence>> upcomingDoseOccurrences(
   MedicationScheduleRepository repository, {
@@ -451,7 +440,7 @@ class _MedicationReminderCardState
   @override
   void initState() {
     super.initState();
-    _MedicationGenieShader.preload();
+    SafaehGenieShader.preload();
     _ticker = Timer.periodic(_refreshRate, (_) {
       if (!mounted) return;
       setState(() => _now = DateTime.now());
@@ -499,102 +488,34 @@ class _MedicationReminderCardState
     final targetRect = _globalRect(_targetKey);
     final screenSize = MediaQuery.sizeOf(context);
     final safeInsets = MediaQuery.viewPaddingOf(context);
-    final textDirection = Directionality.of(context);
     final availableHeight = targetRect == null
         ? null
         : widget.opensAbove
-        ? targetRect.top - safeInsets.top - 16 - _dosePanelAboveGap
+        ? targetRect.top - safeInsets.top - 24
         : screenSize.height - safeInsets.bottom - targetRect.bottom - 16;
-    await showGeneralDialog<void>(
+    final theme = Theme.of(context);
+    final panelShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(26),
+      side: BorderSide(color: theme.colorScheme.outlineVariant),
+    );
+    await showSafaehAnchored<void>(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 460),
-      pageBuilder: (context, animation, secondaryAnimation) {
-        final endIsRight = Directionality.of(context) == ui.TextDirection.ltr;
-        final theme = Theme.of(context);
-        final topEndAlignment = endIsRight
-            ? Alignment.topRight
-            : Alignment.topLeft;
-        final bottomEndAlignment = endIsRight
-            ? Alignment.bottomRight
-            : Alignment.bottomLeft;
-        final targetAnchor = widget.opensAbove
-            ? topEndAlignment
-            : Alignment.bottomCenter;
-        final followerAnchor = widget.opensAbove
-            ? bottomEndAlignment
-            : Alignment.topCenter;
-        final sourceSize = targetRect?.size ?? const Size(56, 56);
-        return AnimatedBuilder(
-          animation: animation,
-          builder: (context, _) {
-            final morphProgress = animation.value;
-            final panelShape = RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(26),
-              side: BorderSide(color: theme.colorScheme.outlineVariant),
-            );
-            return SizedBox.expand(
-              child: Stack(
-                fit: StackFit.expand,
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: CustomPaint(
-                        painter: _MedicationModalScrimPainter(
-                          fabRect: targetRect,
-                          fabShape: buttonShape,
-                          textDirection: textDirection,
-                          animation: animation,
-                        ),
-                        child: const SizedBox.expand(),
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: widget.opensAbove
-                        ? topEndAlignment
-                        : Alignment.topCenter,
-                    child: CompositedTransformFollower(
-                      link: _targetLink,
-                      showWhenUnlinked: false,
-                      targetAnchor: targetAnchor,
-                      followerAnchor: followerAnchor,
-                      offset: widget.opensAbove
-                          ? Offset(0, -_dosePanelLift(morphProgress))
-                          : const Offset(0, 8),
-                      child: IgnorePointer(
-                        ignoring: animation.value < 1,
-                        child: _MedicationGenieMorph(
-                          progress: morphProgress,
-                          sourceSize: sourceSize,
-                          opensAbove: widget.opensAbove,
-                          fromRight: endIsRight,
-                          child: _MedicationDosePanel(
-                            occurrences: occurrences,
-                            countdown: countdown,
-                            now: _now,
-                            hasSchedules: hasSchedules,
-                            maxHeight: availableHeight,
-                            shape: panelShape,
-                            contentOpacity: 1,
-                            elevation: _dosePanelElevation(morphProgress),
-                            shiftTargets: shiftTargets,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) =>
-          child,
+      motion: SafaehAnchoredMotion.genie,
+      link: _targetLink,
+      sourceRect: targetRect,
+      opensAbove: widget.opensAbove,
+      sourceShape: buttonShape,
+      childBuilder: (context, progress) => _MedicationDosePanel(
+        occurrences: occurrences,
+        countdown: countdown,
+        now: _now,
+        hasSchedules: hasSchedules,
+        maxHeight: availableHeight,
+        shape: panelShape,
+        contentOpacity: 1,
+        elevation: safaehAnchoredElevation(progress),
+        shiftTargets: shiftTargets,
+      ),
     );
   }
 

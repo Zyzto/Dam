@@ -134,10 +134,17 @@ void main() {
     await tester.tap(find.text('Theme color').last);
     await tester.pumpAndSettle();
 
-    expect(find.bySemanticsLabel('#F44336'), findsWidgets);
-    expect(find.bySemanticsLabel('#009688'), findsWidgets);
+    expect(_swatch(0xFFF44336), findsWidgets);
+    expect(_swatch(0xFF009688), findsWidgets);
     expect(find.text('Red'), findsNothing);
     expect(find.text('OK'), findsNothing);
     expect(find.text('Cancel'), findsNothing);
   });
 }
+
+Finder _swatch(int argb) => find.byWidgetPredicate((widget) {
+  if (widget is! AnimatedContainer) return false;
+  final decoration = widget.decoration;
+  final color = decoration is BoxDecoration ? decoration.color : null;
+  return color != null && color.toARGB32() == argb;
+});
