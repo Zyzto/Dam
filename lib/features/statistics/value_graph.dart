@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:blood_pressure_app/app.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/domain/domain.dart';
 import 'package:blood_pressure_app/features/settings/app_settings.dart';
 import 'package:blood_pressure_app/features/statistics/chart/chart_legend.dart';
@@ -103,18 +104,14 @@ class _BloodPressureValueChartState
     _lastDisconnected = disconnected;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
+      context.dismissAllToasts();
       if (disconnected) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('bigGraphSplit'.tr()),
-            action: SnackBarAction(
-              onPressed: () =>
-                  Navigator.of(context).pushNamed(AppRoute.settingsGraph.path),
-              label: 'openSettings'.tr(),
-            ),
-          ),
+        context.showToastWithAction(
+          'bigGraphSplit'.tr(),
+          actionLabel: 'openSettings'.tr(),
+          icon: Icons.settings_outlined,
+          onAction: () =>
+              Navigator.of(context).pushNamed(AppRoute.settingsGraph.path),
         );
       }
     });

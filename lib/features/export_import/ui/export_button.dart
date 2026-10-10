@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:blood_pressure_app/core/database/health_database.dart';
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/features/export_import/model/csv_converter.dart';
 import 'package:blood_pressure_app/features/export_import/model/excel_converter.dart';
 import 'package:blood_pressure_app/features/export_import/model/export_entries.dart';
@@ -146,26 +147,12 @@ Future<void> performExport(
     }
 
     if (completed && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 8.0),
-              Text('exportSuccess'.tr()),
-            ],
-          ),
-        ),
-      );
+      context.showSuccess('exportSuccess'.tr());
     }
   } catch (error, stackTrace) {
     Log.severe('Export failed', error: error, stackTrace: stackTrace);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('error'.tr(namedArgs: {'msg': error.toString()})),
-        ),
-      );
+      context.showError('error'.tr(namedArgs: {'msg': error.toString()}));
     }
   }
 }

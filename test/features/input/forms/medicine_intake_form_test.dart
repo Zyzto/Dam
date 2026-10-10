@@ -166,7 +166,7 @@ void main() {
     ));
 
     final number = tester.getRect(find.text('5').first);
-    final unit = tester.getRect(find.text('mg'));
+    final unit = tester.getRect(find.text('مغ'));
     expect(unit.left, greaterThan(number.center.dx));
     expect(unit.right, lessThan(tester.getRect(find.byKey(const ValueKey('dose-minus'))).left));
   });

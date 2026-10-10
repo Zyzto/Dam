@@ -1,5 +1,6 @@
 import 'package:blood_pressure_app/components/confirm_deletion_dialog.dart';
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/features/bluetooth/logic/ble_measurement_duplicates.dart';
 import 'package:blood_pressure_app/features/input/add_entry_dialog.dart';
 import 'package:blood_pressure_app/features/input/forms/add_entry_form.dart';
@@ -48,7 +49,6 @@ extension EntryUtils on BuildContext {
       final noteRepo = this.noteRepo;
       final intakeRepo = this.intakeRepo;
       final weightRepo = this.weightRepo;
-      final messenger = ScaffoldMessenger.of(this);
 
       var choice = DeleteChoice.delete;
       if (settings.confirmDeletion) {
@@ -106,30 +106,29 @@ extension EntryUtils on BuildContext {
         }
       }
 
-      messenger.removeCurrentSnackBar();
-      messenger.showSnackBar(SnackBar(
-        content: Text('deletionConfirmed'.tr()),
-        action: SnackBarAction(
-          label: 'btnUndo'.tr(),
-          onPressed: () async {
-            if (entry.record != null) await bpRepo.add(entry.record!);
-            if (entry.note != null) await noteRepo.add(entry.note!);
-            for (final intake in entry.allIntakes) {
-              if (intake.time.year == entry.time.year
-                  && intake.time.month == entry.time.month
-                  && intake.time.day == entry.time.day
-                  && intake.time.hour == entry.time.hour
-                  && intake.time.minute == entry.time.minute) {
-                await intakeRepo.add(intake);
-              }
+      if (!mounted) return true;
+      dismissAllToasts();
+      showToastWithAction(
+        'deletionConfirmed'.tr(),
+        actionLabel: 'btnUndo'.tr(),
+        onAction: () async {
+          if (entry.record != null) await bpRepo.add(entry.record!);
+          if (entry.note != null) await noteRepo.add(entry.note!);
+          for (final intake in entry.allIntakes) {
+            if (intake.time.year == entry.time.year
+                && intake.time.month == entry.time.month
+                && intake.time.day == entry.time.day
+                && intake.time.hour == entry.time.hour
+                && intake.time.minute == entry.time.minute) {
+              await intakeRepo.add(intake);
             }
-            if (entry.weight != null) await weightRepo.add(entry.weight!);
-            for (final item in blocked) {
-              await blacklistRepo.remove(item.$1, item.$2);
-            }
-          },
-        ),
-      ),);
+          }
+          if (entry.weight != null) await weightRepo.add(entry.weight!);
+          for (final item in blocked) {
+            await blacklistRepo.remove(item.$1, item.$2);
+          }
+        },
+      );
       return true;
     } on StateError {
       Log.severe('[extension.EntryUtils] deleteEntry($entry) was called from a context without Provider.');

@@ -163,7 +163,7 @@ void main() {
     expect(await bpRepo.get(DateRange.all()), isEmpty);
     expect(await blacklist.getKeys('bp'), isEmpty);
 
-    await tester.tap(find.text('UNDO'));
+    await tester.tap(find.text('UNDO', skipOffstage: false));
     await tester.pumpAndSettle();
     expect(await bpRepo.get(DateRange.all()), hasLength(2));
   });
@@ -199,7 +199,7 @@ void main() {
       {bloodPressureRecordKey(entry.record!)},
     );
 
-    await tester.tap(find.text('UNDO'));
+    await tester.tap(find.text('UNDO', skipOffstage: false));
     await tester.pumpAndSettle();
     expect(await blacklist.getKeys('bp'), isEmpty);
     expect(await bpRepo.get(DateRange.all()), hasLength(1));

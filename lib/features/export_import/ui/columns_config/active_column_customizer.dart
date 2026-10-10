@@ -1,5 +1,6 @@
 import 'package:blood_pressure_app/components/input_dialog.dart';
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/features/export_import/model/export_active_preset.dart';
 import 'package:blood_pressure_app/features/export_import/model/export_preset.dart';
 import 'package:blood_pressure_app/features/export_import/ui/columns_config/active_preset_builder.dart';
@@ -64,10 +65,9 @@ class _PresetEditButtons extends StatelessWidget {
     id = await showInputDialog(context);
     while (id != null && (blockedIds.contains(id) || id.isEmpty)) {
       if (!context.mounted) break;
-      final ctrl = ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('titleAlreadyExists'.tr())));
+      context.showError('titleAlreadyExists'.tr());
       id = await showInputDialog(context);
-      ctrl.close();
+      if (context.mounted) context.dismissAllToasts();
     }
     return id;
   }

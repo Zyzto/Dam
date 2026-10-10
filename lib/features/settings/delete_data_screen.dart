@@ -1,6 +1,7 @@
 import 'package:blood_pressure_app/components/confirm_deletion_dialog.dart';
 import 'package:blood_pressure_app/core/database/database_providers.dart';
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/domain/domain.dart';
 import 'package:blood_pressure_app/features/medications/medication_reminder_providers.dart';
 import 'package:blood_pressure_app/features/settings/edadat_prefs.dart';
@@ -36,7 +37,6 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
           title: Text('deleteAllSettings'.tr()),
           trailing: const Icon(Icons.delete_forever),
           onTap: () async {
-            final messanger = ScaffoldMessenger.of(context);
             if (await showConfirmDeletionDialog(
               context,
               'warnDeletionUnrecoverable'.tr(),
@@ -44,13 +44,9 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
               if (!context.mounted) return;
               final loader = context.fileSettingsLoader;
               if (loader == null) {
-                messanger.showSnackBar(
-                  SnackBar(
-                    // Shouldn't happen in normal app use
-                    content: Text(
-                      'error'.tr(namedArgs: {'msg': 'No loader object'}),
-                    ),
-                  ),
+                // Shouldn't happen in normal app use
+                context.showError(
+                  'error'.tr(namedArgs: {'msg': 'No loader object'}),
                 );
                 return;
               }
@@ -65,9 +61,8 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
                 listen: false,
               ).read(settingsControllerProvider);
               await clearEdadatPreferences(null, controller);
-              messanger.showSnackBar(
-                SnackBar(content: Text('deletionConfirmed'.tr())),
-              );
+              if (!context.mounted) return;
+              context.showSuccess('deletionConfirmed'.tr());
             }
           },
         ),
@@ -76,7 +71,6 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
           title: Text('deleteAllMeasurements'.tr()),
           trailing: const Icon(Icons.delete_forever),
           onTap: () async {
-            final messanger = ScaffoldMessenger.of(context);
             if (await showConfirmDeletionDialog(
               context,
               'warnDeletionUnrecoverable'.tr(),
@@ -87,14 +81,11 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
               for (final record in previousRecords) {
                 await repo.remove(record);
               }
-              messanger.showSnackBar(
-                SnackBar(
-                  content: Text('deletionConfirmed'.tr()),
-                  action: SnackBarAction(
-                    label: 'btnUndo'.tr(),
-                    onPressed: () => Future.forEach(previousRecords, repo.add),
-                  ),
-                ),
+              if (!context.mounted) return;
+              context.showToastWithAction(
+                'deletionConfirmed'.tr(),
+                actionLabel: 'btnUndo'.tr(),
+                onAction: () => Future.forEach(previousRecords, repo.add),
               );
             }
           },
@@ -104,7 +95,6 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
           title: Text('deleteAllNotes'.tr()),
           trailing: const Icon(Icons.delete_forever),
           onTap: () async {
-            final messanger = ScaffoldMessenger.of(context);
             if (await showConfirmDeletionDialog(
               context,
               'warnDeletionUnrecoverable'.tr(),
@@ -115,14 +105,11 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
               for (final note in previousNotes) {
                 await repo.remove(note);
               }
-              messanger.showSnackBar(
-                SnackBar(
-                  content: Text('deletionConfirmed'.tr()),
-                  action: SnackBarAction(
-                    label: 'btnUndo'.tr(),
-                    onPressed: () => Future.forEach(previousNotes, repo.add),
-                  ),
-                ),
+              if (!context.mounted) return;
+              context.showToastWithAction(
+                'deletionConfirmed'.tr(),
+                actionLabel: 'btnUndo'.tr(),
+                onAction: () => Future.forEach(previousNotes, repo.add),
               );
             }
           },
@@ -132,7 +119,6 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
           title: Text('deleteAllWeights'.tr()),
           trailing: const Icon(Icons.delete_forever),
           onTap: () async {
-            final messanger = ScaffoldMessenger.of(context);
             if (await showConfirmDeletionDialog(
               context,
               'warnDeletionUnrecoverable'.tr(),
@@ -143,14 +129,11 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
               for (final record in previous) {
                 await repo.remove(record);
               }
-              messanger.showSnackBar(
-                SnackBar(
-                  content: Text('deletionConfirmed'.tr()),
-                  action: SnackBarAction(
-                    label: 'btnUndo'.tr(),
-                    onPressed: () => Future.forEach(previous, repo.add),
-                  ),
-                ),
+              if (!context.mounted) return;
+              context.showToastWithAction(
+                'deletionConfirmed'.tr(),
+                actionLabel: 'btnUndo'.tr(),
+                onAction: () => Future.forEach(previous, repo.add),
               );
             }
           },
@@ -166,14 +149,12 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
             )) {
               if (!context.mounted) return;
               final repo = context.intakeRepo;
-              final messanger = ScaffoldMessenger.of(context);
               final allIntakes = await repo.get(DateRange.all());
               for (final intake in allIntakes) {
                 await repo.remove(intake);
               }
-              messanger.showSnackBar(
-                SnackBar(content: Text('deletionConfirmed'.tr())),
-              );
+              if (!context.mounted) return;
+              context.showSuccess('deletionConfirmed'.tr());
             }
           },
         ),
@@ -196,9 +177,8 @@ class _DeleteDataScreenState extends State<DeleteDataScreen> {
             container.invalidate(medicationSchedulesProvider);
             container.invalidate(todayMedicationOccurrencesProvider);
             container.invalidate(medicationDayProvider);
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('deletionConfirmed'.tr())));
+            if (!context.mounted) return;
+            context.showSuccess('deletionConfirmed'.tr());
           },
         ),
       ],

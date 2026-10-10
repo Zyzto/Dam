@@ -2,6 +2,7 @@ import 'package:blood_pressure_app/components/animated_floating_action_button.da
 import 'package:blood_pressure_app/components/confirm_deletion_dialog.dart';
 import 'package:blood_pressure_app/components/snack_bar_stable_fab_location.dart';
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/data_util/entry_context.dart';
 import 'package:blood_pressure_app/domain/domain.dart';
 import 'package:blood_pressure_app/features/bluetooth/logic/ble_measurement_duplicates.dart';
@@ -120,7 +121,6 @@ class _WeightDetailScreenState extends ConsumerState<WeightDetailScreen> {
       if (!mounted || choice == DeleteChoice.cancel) return;
     }
     final blacklistRepo = context.blacklistRepo;
-    final messenger = ScaffoldMessenger.of(context);
     await weightRepo.remove(_record);
     String? blockedKey;
     if (choice == DeleteChoice.deleteAndBlacklist) {
@@ -134,19 +134,18 @@ class _WeightDetailScreenState extends ConsumerState<WeightDetailScreen> {
         endTime: _record.time.add(const Duration(milliseconds: 500)),
       );
     }
-    messenger.removeCurrentSnackBar();
-    messenger.showSnackBar(SnackBar(
-      content: Text('deletionConfirmed'.tr()),
-      action: SnackBarAction(
-        label: 'btnUndo'.tr(),
-        onPressed: () async {
-          await weightRepo.add(_record);
-          if (blockedKey != null) {
-            await blacklistRepo.remove('weight', blockedKey);
-          }
-        },
-      ),
-    ));
+    if (!mounted) return;
+    context.dismissAllToasts();
+    context.showToastWithAction(
+      'deletionConfirmed'.tr(),
+      actionLabel: 'btnUndo'.tr(),
+      onAction: () async {
+        await weightRepo.add(_record);
+        if (blockedKey != null) {
+          await blacklistRepo.remove('weight', blockedKey);
+        }
+      },
+    );
     if (mounted) Navigator.of(context).pop();
   }
 

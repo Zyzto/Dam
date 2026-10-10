@@ -111,13 +111,6 @@ class MetricInfoDialog extends StatelessWidget {
               ),
             ),
           ],
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('btnConfirm'.tr()),
-            ),
-          ),
         ],
       ),
     );

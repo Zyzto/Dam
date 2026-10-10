@@ -7,6 +7,7 @@ class PdfExportSettings extends PersistableSettings {
     bool? exportTitle,
     bool? exportStatistics,
     bool? exportData,
+    bool? separateWeightMedicineTables,
     double? headerHeight,
     double? cellHeight,
     double? headerFontSize,
@@ -15,6 +16,7 @@ class PdfExportSettings extends PersistableSettings {
   })  : _exportTitle = exportTitle ?? true,
         _exportStatistics = exportStatistics ?? true,
         _exportData = exportData ?? true,
+        _separateWeightMedicineTables = separateWeightMedicineTables ?? true,
         _headerHeight = headerHeight ?? 20,
         _cellHeight = cellHeight ?? 15,
         _headerFontSize = headerFontSize ?? 10,
@@ -38,6 +40,7 @@ class PdfExportSettings extends PersistableSettings {
   bool _exportTitle;
   bool _exportStatistics;
   bool _exportData;
+  bool _separateWeightMedicineTables;
   double _headerHeight;
   double _cellHeight;
   double _headerFontSize;
@@ -59,6 +62,13 @@ class PdfExportSettings extends PersistableSettings {
   bool get exportData => _exportData;
   set exportData(bool v) {
     _exportData = v;
+    notifyListeners();
+  }
+
+  /// Weight and medicine each get a table, instead of columns in the reading log.
+  bool get separateWeightMedicineTables => _separateWeightMedicineTables;
+  set separateWeightMedicineTables(bool v) {
+    _separateWeightMedicineTables = v;
     notifyListeners();
   }
 
@@ -97,6 +107,7 @@ class PdfExportSettings extends PersistableSettings {
     'exportTitle': _exportTitle,
     'exportStatistics': _exportStatistics,
     'exportData': _exportData,
+    'separateWeightMedicineTables': _separateWeightMedicineTables,
     'headerHeight': _headerHeight,
     'cellHeight': _cellHeight,
     'headerFontSize': _headerFontSize,
@@ -108,6 +119,7 @@ class PdfExportSettings extends PersistableSettings {
     _exportTitle = other._exportTitle;
     _exportStatistics = other._exportStatistics;
     _exportData = other._exportData;
+    _separateWeightMedicineTables = other._separateWeightMedicineTables;
     _headerHeight = other._headerHeight;
     _cellHeight = other._cellHeight;
     _headerFontSize = other._headerFontSize;
@@ -133,6 +145,8 @@ class PdfExportSettings extends PersistableSettings {
     if (stats != null) _exportStatistics = stats;
     final data = ConvertUtil.parseBool(map['exportData']);
     if (data != null) _exportData = data;
+    final separate = ConvertUtil.parseBool(map['separateWeightMedicineTables']);
+    if (separate != null) _separateWeightMedicineTables = separate;
     final headerH = ConvertUtil.parseDouble(map['headerHeight']);
     if (headerH != null) _headerHeight = headerH;
     final cellH = ConvertUtil.parseDouble(map['cellHeight']);

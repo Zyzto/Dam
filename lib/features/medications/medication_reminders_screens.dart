@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:blood_pressure_app/components/animated_floating_action_button.dart';
 import 'package:blood_pressure_app/components/snack_bar_stable_fab_location.dart';
 import 'package:blood_pressure_app/core/repository/repository_providers.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/domain/domain.dart';
 import 'package:blood_pressure_app/features/medications/medication_reminder_plan.dart';
 import 'package:blood_pressure_app/features/medications/medication_reminder_providers.dart';
@@ -27,6 +28,27 @@ part 'medication_reminder_day_page_header.dart';
 part 'medication_reminder_day_log_page.dart';
 part 'medication_reminder_collapsed_taken_log.dart';
 part 'medication_reminder_day_log_card.dart';
+
+/// Gap between the settled dose card and the top of the reminder button.
+const _dosePanelAboveGap = 8.0;
+
+/// Warp ends first. The lift and shadow finish after that, and the animation
+/// value keeps going so the last frames are already the settled card.
+const _dosePanelWarpEnd = 0.84;
+const _dosePanelLiftEnd = 0.90;
+const _dosePanelShadowEnd = 0.94;
+
+/// The funnel stays on the button's top edge, then the card rises into this gap.
+double _dosePanelLift(double progress) {
+  final t = ((progress - 0.48) / (_dosePanelLiftEnd - 0.48)).clamp(0.0, 1.0);
+  return _dosePanelAboveGap * Curves.easeOut.transform(t);
+}
+
+double _dosePanelElevation(double progress) {
+  final t = ((progress - _dosePanelWarpEnd) / (_dosePanelShadowEnd - _dosePanelWarpEnd))
+      .clamp(0.0, 1.0);
+  return 12 * Curves.easeOut.transform(t);
+}
 
 Future<List<DoseOccurrence>> upcomingDoseOccurrences(
   MedicationScheduleRepository repository, {
@@ -429,6 +451,7 @@ class _MedicationReminderCardState
   @override
   void initState() {
     super.initState();
+    _MedicationGenieShader.preload();
     _ticker = Timer.periodic(_refreshRate, (_) {
       if (!mounted) return;
       setState(() => _now = DateTime.now());
@@ -480,7 +503,7 @@ class _MedicationReminderCardState
     final availableHeight = targetRect == null
         ? null
         : widget.opensAbove
-        ? targetRect.top - safeInsets.top - 16
+        ? targetRect.top - safeInsets.top - 16 - _dosePanelAboveGap
         : screenSize.height - safeInsets.bottom - targetRect.bottom - 16;
     await showGeneralDialog<void>(
       context: context,
@@ -489,16 +512,8 @@ class _MedicationReminderCardState
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 460),
       pageBuilder: (context, animation, secondaryAnimation) {
-        final curve = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
         final endIsRight = Directionality.of(context) == ui.TextDirection.ltr;
         final theme = Theme.of(context);
-        final sourceRadius = buttonShape is RoundedRectangleBorder
-            ? buttonShape.borderRadius.resolve(textDirection).topLeft.x
-            : (targetRect?.shortestSide ?? 56) / 2;
         final topEndAlignment = endIsRight
             ? Alignment.topRight
             : Alignment.topLeft;
@@ -511,20 +526,14 @@ class _MedicationReminderCardState
         final followerAnchor = widget.opensAbove
             ? bottomEndAlignment
             : Alignment.topCenter;
+        final sourceSize = targetRect?.size ?? const Size(56, 56);
         return AnimatedBuilder(
           animation: animation,
           builder: (context, _) {
-            final morphProgress = curve.value;
-            final panelRadius = Tween<double>(
-              begin: sourceRadius,
-              end: 26,
-            ).transform(morphProgress);
+            final morphProgress = animation.value;
             final panelShape = RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(panelRadius),
+              borderRadius: BorderRadius.circular(26),
               side: BorderSide(color: theme.colorScheme.outlineVariant),
-            );
-            final contentOpacity = Curves.easeOutCubic.transform(
-              ((animation.value - 0.12) / 0.38).clamp(0.0, 1.0),
             );
             return SizedBox.expand(
               child: Stack(
@@ -554,26 +563,26 @@ class _MedicationReminderCardState
                       targetAnchor: targetAnchor,
                       followerAnchor: followerAnchor,
                       offset: widget.opensAbove
-                          ? Offset.zero
+                          ? Offset(0, -_dosePanelLift(morphProgress))
                           : const Offset(0, 8),
-                      child: ClipPath(
-                        clipper: _MedicationGenieClipper(
+                      child: IgnorePointer(
+                        ignoring: animation.value < 1,
+                        child: _MedicationGenieMorph(
                           progress: morphProgress,
-                          sourceSize: targetRect?.shortestSide ?? 56,
-                          panelRadius: panelRadius,
-                          sourceShape: buttonShape,
-                          textDirection: textDirection,
+                          sourceSize: sourceSize,
                           opensAbove: widget.opensAbove,
-                        ),
-                        child: _MedicationDosePanel(
-                          occurrences: occurrences,
-                          countdown: countdown,
-                          now: _now,
-                          hasSchedules: hasSchedules,
-                          maxHeight: availableHeight,
-                          shape: panelShape,
-                          contentOpacity: contentOpacity,
-                          shiftTargets: shiftTargets,
+                          fromRight: endIsRight,
+                          child: _MedicationDosePanel(
+                            occurrences: occurrences,
+                            countdown: countdown,
+                            now: _now,
+                            hasSchedules: hasSchedules,
+                            maxHeight: availableHeight,
+                            shape: panelShape,
+                            contentOpacity: 1,
+                            elevation: _dosePanelElevation(morphProgress),
+                            shiftTargets: shiftTargets,
+                          ),
                         ),
                       ),
                     ),
@@ -788,7 +797,7 @@ class _MedicationCountdownCircle extends StatelessWidget {
         : _formatCompactCountdown(
             remaining,
             overdue: overdue,
-            dueNow: _t('reminderDueNow', 'Now'),
+            dueNow: _t('reminderDueNow', 'Due'),
           );
     final medicine = countdown?.occurrence.schedule.medicine.designation;
     final prominentEmptySquare =
@@ -1398,6 +1407,7 @@ class _MedicationDosePanel extends ConsumerStatefulWidget {
     required this.maxHeight,
     required this.shape,
     required this.contentOpacity,
+    this.elevation = 12,
     this.shiftTargets = const {},
   });
 
@@ -1408,6 +1418,7 @@ class _MedicationDosePanel extends ConsumerStatefulWidget {
   final double? maxHeight;
   final ShapeBorder shape;
   final double contentOpacity;
+  final double elevation;
   final Map<String, DateTime> shiftTargets;
 
   @override
@@ -1514,7 +1525,7 @@ class _MedicationDosePanelState extends ConsumerState<_MedicationDosePanel> {
       width: math.max(0.0, math.min(media.width - 32, 400.0)),
       child: Material(
         color: theme.colorScheme.surfaceContainerHigh,
-        elevation: 12,
+        elevation: widget.elevation,
         shadowColor: Colors.black.withValues(alpha: 0.35),
         shape: widget.shape,
         clipBehavior: Clip.antiAlias,
@@ -1567,7 +1578,7 @@ class _MedicationDosePanelState extends ConsumerState<_MedicationDosePanel> {
                       )
                     else if (countdown == null)
                       _MedicationPanelEmpty(hasSchedules: widget.hasSchedules)
-                    else ...[
+                    else
                       _MedicationDoseActionCard(
                         countdown: countdown,
                         now: widget.now,
@@ -1576,7 +1587,6 @@ class _MedicationDosePanelState extends ConsumerState<_MedicationDosePanel> {
                         onSnooze: () => _setStatus('snoozed'),
                         onSkip: () => _setStatus('skipped'),
                       ),
-                    ],
                     if (visibleLater.isNotEmpty) ...[
                       const SizedBox(height: 13),
                       Align(
@@ -1772,7 +1782,7 @@ class _MedicationDoseActionCard extends StatelessWidget {
     final scheduledDay = _doseDayLabel(context, shownAt, now);
     final scheduledLabel = _t('reminderScheduled', 'Scheduled');
     final scheduled = dueNow
-        ? '${_t('reminderDueNow', 'Due now')} · ${_movedFromLabel(originalTime)}'
+        ? '${_t('reminderDueNow', 'Due')} · ${_movedFromLabel(originalTime)}'
         : movedAhead
         ? '$scheduledLabel: $scheduledTime · ${_movedFromLabel(originalTime)}'
         : '$scheduledLabel: $scheduledTime'
@@ -1930,7 +1940,7 @@ class _DoseStatusLine extends StatelessWidget {
     final value = _formatCompactCountdown(
       countdown.remainingAt(now),
       overdue: overdue,
-      dueNow: _t('reminderDueNow', 'Due now'),
+      dueNow: _t('reminderDueNow', 'Due'),
     );
     return Row(
       mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
@@ -2657,14 +2667,10 @@ class _MedicationScheduleEditorScreenState
       return;
     }
     if (_weekdays.isEmpty || _times.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t(
-              'reminderChooseDaysAndTimes',
-              'Choose at least one day and time.',
-            ),
-          ),
+      context.showError(
+        _t(
+          'reminderChooseDaysAndTimes',
+          'Choose at least one day and time.',
         ),
       );
       return;
@@ -2672,14 +2678,10 @@ class _MedicationScheduleEditorScreenState
     if (_startDate != null &&
         _endDate != null &&
         _endDate!.isBefore(_startDate!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t(
-              'reminderEndBeforeStart',
-              'End date must be after the start date.',
-            ),
-          ),
+      context.showError(
+        _t(
+          'reminderEndBeforeStart',
+          'End date must be after the start date.',
         ),
       );
       return;
@@ -2717,14 +2719,10 @@ class _MedicationScheduleEditorScreenState
     ref.invalidate(medicationDayProvider);
     ref.invalidate(homeMedicationOccurrencesProvider);
     if (!notificationPermissionGranted && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t(
-              'reminderNotificationsDisabled',
-              'Notifications are off. You can enable them in reminder settings.',
-            ),
-          ),
+      context.showToast(
+        _t(
+          'reminderNotificationsDisabled',
+          'Notifications are off. You can enable them in reminder settings.',
         ),
       );
     }
@@ -2838,7 +2836,7 @@ class _MedicationScheduleEditorScreenState
                       ],
                       decoration: InputDecoration(
                         labelText: _t('reminderDose', 'Dose amount'),
-                        suffixText: _medicine?.unit.symbol,
+                        suffixText: _medicine?.unit.localizedSymbol,
                       ),
                       validator: (value) {
                         final amount = double.tryParse(value ?? '');

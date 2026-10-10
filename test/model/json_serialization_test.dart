@@ -144,6 +144,7 @@ void main() {
         exportTitle: false,
         exportStatistics: false,
         exportData: false,
+        separateWeightMedicineTables: false,
         headerHeight: 67.89,
         cellHeight: 67.89,
         headerFontSize: 67.89,
@@ -154,6 +155,10 @@ void main() {
       expect(initial.exportTitle, fromJson.exportTitle);
       expect(initial.exportStatistics, fromJson.exportStatistics);
       expect(initial.exportData, fromJson.exportData);
+      expect(
+        initial.separateWeightMedicineTables,
+        fromJson.separateWeightMedicineTables,
+      );
       expect(initial.headerHeight, fromJson.headerHeight);
       expect(initial.cellHeight, fromJson.cellHeight);
       expect(initial.headerFontSize, fromJson.headerFontSize);

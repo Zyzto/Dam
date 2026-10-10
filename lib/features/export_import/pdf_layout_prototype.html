@@ -1,0 +1,510 @@
+<!--
+Five PDF layout variants for the Janan export.
+Question: which page should replace the current title, chart, averages table, and reading list?
+Switch with ?variant=letter|poster|diary|ledger|strip
+Throwaway prototype. Not the export.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Janan PDF layouts</title>
+<style>
+  :root {
+    --desk: #2c2c2c;
+    --ink: #1a1a1a;
+    --teal: #009688;
+    --dia: #2e7d32;
+    --muted: #5c6562;
+    --elevated: #c4840a;
+    --high: #d4534a;
+    --normal: #3d8f84;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--desk); color: #f2f2f2; font-family: "Segoe UI", system-ui, sans-serif; }
+  body { min-height: 100vh; }
+  #chrome {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 22px 12px;
+    background: rgba(44, 44, 44, 0.92);
+    backdrop-filter: blur(8px);
+  }
+  #chrome p { margin: 0; max-width: 62ch; font-size: 14px; line-height: 1.4; color: #d7d7d7; }
+  #chrome small { display: block; margin-top: 4px; color: #9a9a9a; font-size: 12px; }
+  #count { font-variant-numeric: tabular-nums; color: #9a9a9a; font-size: 13px; }
+  #stage-wrap { display: flex; justify-content: center; padding: 8px 12px 108px; }
+  #stage { transform-origin: top center; }
+  .sheet {
+    width: 210mm;
+    height: 297mm;
+    background: white;
+    color: var(--ink);
+    overflow: hidden;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  }
+
+  /* A · Letter */
+  .letter { padding: 12mm 16mm 10mm; font-family: "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; }
+  .letter header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 0.6mm solid var(--teal); padding-bottom: 2.5mm; }
+  .letter .brand { font-size: 11pt; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
+  .letter .doctype { font-size: 9pt; color: var(--muted); }
+  .letter h1 { margin: 4mm 0 1mm; font-size: 15pt; font-weight: 650; letter-spacing: -0.02em; }
+  .letter .meta { margin: 0 0 4mm; font-size: 9.5pt; color: var(--muted); }
+  .letter .latest { display: flex; justify-content: space-between; align-items: flex-end; gap: 8mm; margin-bottom: 4mm; }
+  .letter .latest .k { display: block; font-size: 8pt; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 1mm; }
+  .letter .latest strong { font-size: 26pt; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .letter .latest strong span { color: #b9b9b9; font-weight: 400; padding: 0 1mm; }
+  .letter .latest em { display: block; margin-top: 1mm; font-style: normal; font-size: 9.5pt; color: var(--muted); }
+  .letter .bands { display: flex; flex-direction: column; gap: 1.5mm; align-items: flex-end; font-size: 8.5pt; }
+  .letter .band { padding: 1mm 2.4mm; border-radius: 99px; }
+  .band.normal { background: #e5f4f1; color: var(--normal); }
+  .band.elevated { background: #fbf3df; color: var(--elevated); }
+  .band.high { background: #fdecea; color: var(--high); }
+  .letter .trio { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 0.25mm solid #e4e4e4; border-bottom: 0.25mm solid #e4e4e4; }
+  .letter .trio div { padding: 3.5mm 0; }
+  .letter .trio div + div { border-left: 0.25mm solid #e4e4e4; padding-left: 4mm; }
+  .letter .trio .k { display: block; font-size: 8pt; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .letter .trio b { display: block; margin-top: 1mm; font-size: 14pt; font-variant-numeric: tabular-nums; font-weight: 650; }
+  .letter .trio small { color: var(--muted); font-size: 8.5pt; }
+  .letter .chart { height: 26mm; margin: 3mm 0 1mm; }
+  .letter .chart svg { width: 100%; height: 100%; display: block; }
+  .letter .legend { display: flex; gap: 5mm; font-size: 8pt; color: var(--muted); margin-bottom: 4mm; }
+  .letter .legend i { display: inline-block; width: 4mm; height: 1.2mm; margin-right: 1.5mm; vertical-align: middle; }
+  .letter h2 { margin: 0 0 2mm; font-size: 9pt; letter-spacing: 0.12em; text-transform: uppercase; }
+  .letter table { width: 100%; border-collapse: collapse; font-size: 9pt; font-variant-numeric: tabular-nums; }
+  .letter th { text-align: left; font-weight: 650; font-size: 8pt; color: var(--muted); padding: 0 2mm 1.5mm 0; }
+  .letter td { padding: 1.25mm 2mm 1.25mm 0; border-top: 0.2mm solid #ececec; vertical-align: baseline; }
+  .letter td.note { color: #444; font-variant-numeric: normal; }
+  .letter .dayhead td { border-top: 0.35mm solid #111; font-size: 8pt; letter-spacing: 0.06em; text-transform: uppercase; color: #333; padding-top: 2.4mm; font-weight: 650; }
+  .letter tfoot td { border: 0; padding-top: 4mm; color: var(--muted); font-size: 8.5pt; }
+
+  /* B · Poster */
+  .poster { padding: 18mm 18mm 14mm; background: #f7f4ef; display: flex; flex-direction: column; font-family: "Segoe UI", system-ui, sans-serif; }
+  .poster .eyebrow { font-size: 9pt; letter-spacing: 0.22em; text-transform: uppercase; color: #7a7268; }
+  .poster .hero { margin: 10mm 0 2mm; }
+  .poster .hero .k { font-size: 10pt; color: #7a7268; }
+  .poster .hero strong { display: block; font-size: 68pt; line-height: 0.9; letter-spacing: -0.045em; font-weight: 620; font-variant-numeric: tabular-nums; }
+  .poster .hero strong span { color: #c8c0b6; font-weight: 400; }
+  .poster .hero em { display: block; margin-top: 3mm; font-style: normal; font-size: 12pt; color: #5e574e; }
+  .poster .rule { height: 0.3mm; background: #1a1a1a; margin: 8mm 0; }
+  .poster .tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; }
+  .poster .tiles .k { display: block; font-size: 8.5pt; letter-spacing: 0.1em; text-transform: uppercase; color: #7a7268; }
+  .poster .tiles b { display: block; margin-top: 1.5mm; font-size: 18pt; font-variant-numeric: tabular-nums; font-weight: 640; }
+  .poster .chart { flex: 1; min-height: 0; margin-top: 6mm; }
+  .poster .chart svg { width: 100%; height: 100%; display: block; }
+  .poster .recent { margin-top: 5mm; }
+  .poster .recent h2 { margin: 0 0 2mm; font-size: 8.5pt; letter-spacing: 0.14em; text-transform: uppercase; color: #7a7268; font-weight: 650; }
+  .poster .recent ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1.2mm 8mm; }
+  .poster .recent li { display: flex; justify-content: space-between; font-size: 10pt; font-variant-numeric: tabular-nums; border-top: 0.2mm solid #e4ddd3; padding-top: 1.2mm; }
+  .poster .recent time { color: #7a7268; }
+
+  /* C · Diary */
+  .diary { padding: 16mm 18mm 14mm; background: #fbf7f1; color: #2c261f; font-family: Palatino, "Iowan Old Style", Georgia, serif; }
+  .diary header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5mm; }
+  .diary .brand { font-family: "Segoe UI", system-ui, sans-serif; font-size: 8.5pt; letter-spacing: 0.18em; text-transform: uppercase; }
+  .diary .range { font-size: 10pt; font-style: italic; }
+  .diary .lead { margin: 0 0 6mm; font-size: 12.5pt; line-height: 1.45; }
+  .diary .day { display: grid; grid-template-columns: 38mm 1fr; column-gap: 4mm; padding: 2.4mm 0 2mm; border-top: 0.25mm solid #e4d9c8; }
+  .diary .when { font-family: "Segoe UI", system-ui, sans-serif; font-size: 8pt; letter-spacing: 0.08em; text-transform: uppercase; padding-top: 0.8mm; color: #6b5e4e; }
+  .diary .read { display: grid; grid-template-columns: 16mm 1fr auto; gap: 3mm; align-items: baseline; font-size: 12pt; padding: 0.4mm 0; }
+  .diary .read time { font-variant-numeric: tabular-nums; font-size: 10pt; color: #6b5e4e; }
+  .diary .read b { font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .diary .read .pul { font-family: "Segoe UI", system-ui, sans-serif; font-size: 9pt; color: #6b5e4e; }
+  .diary .note { grid-column: 2 / -1; margin: 0 0 0.6mm; font-size: 10.5pt; font-style: italic; color: #4e4336; }
+
+  /* D · Ledger */
+  .ledger { padding: 12mm 12mm 10mm; font-family: "Cascadia Mono", "SFMono-Regular", ui-monospace, monospace; font-size: 8pt; }
+  .ledger .stamp { display: flex; justify-content: space-between; border-bottom: 0.45mm solid #111; padding-bottom: 2mm; letter-spacing: 0.08em; }
+  .ledger .stamp b { font-size: 11pt; letter-spacing: 0.16em; }
+  .ledger .span { margin: 3mm 0 2mm; display: flex; justify-content: space-between; }
+  .ledger .matrix { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+  .ledger .matrix th, .ledger .matrix td { text-align: right; padding: 0.8mm 2mm; border-bottom: 0.2mm solid #111; font-weight: 500; }
+  .ledger .matrix th:first-child, .ledger .matrix td:first-child { text-align: left; }
+  .ledger .log { width: 100%; border-collapse: collapse; }
+  .ledger .log th { text-align: left; font-weight: 700; border-bottom: 0.4mm solid #111; padding: 1mm 1.5mm 1.2mm 0; }
+  .ledger .log td { padding: 1.15mm 1.5mm 1.15mm 0; border-bottom: 0.15mm solid #c8c8c8; vertical-align: top; }
+  .ledger .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .ledger .flag { font-weight: 700; }
+  .ledger footer { margin-top: 3mm; display: flex; justify-content: space-between; color: #333; }
+
+  /* E · Strip */
+  .strip { display: grid; grid-template-columns: 62mm 1fr; height: 297mm; font-family: "Segoe UI", system-ui, sans-serif; }
+  .strip aside { background: #14332f; color: #f4f7f6; padding: 14mm 8mm; display: flex; flex-direction: column; }
+  .strip .brand { letter-spacing: 0.18em; text-transform: uppercase; font-size: 9pt; font-weight: 700; }
+  .strip .range { margin-top: 3mm; font-size: 11pt; line-height: 1.35; }
+  .strip .latest { margin-top: 10mm; }
+  .strip .latest .k, .strip .stat .k { font-size: 8pt; letter-spacing: 0.12em; text-transform: uppercase; color: #9fb8b3; }
+  .strip .latest strong { display: block; margin-top: 2mm; font-size: 32pt; line-height: 0.92; font-weight: 640; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .strip .latest strong span { color: #7d9c96; font-weight: 400; }
+  .strip .latest em { display: block; margin-top: 2mm; font-style: normal; font-size: 9pt; color: #c5d6d2; }
+  .strip .stats { margin-top: 8mm; display: flex; flex-direction: column; gap: 3.5mm; }
+  .strip .stat b { display: block; margin-top: 0.6mm; font-size: 12pt; font-variant-numeric: tabular-nums; }
+  .strip .foot { margin-top: auto; font-size: 9pt; color: #c5d6d2; line-height: 1.45; }
+  .strip main { padding: 12mm 8mm 10mm 7mm; display: flex; flex-direction: column; gap: 7mm; }
+  .strip h2 { margin: 0 0 2mm; font-size: 8pt; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1.5mm; flex: 1; }
+  .cell { border-top: 0.35mm solid #111; padding-top: 1.5mm; display: flex; flex-direction: column; min-width: 0; min-height: 58mm; }
+  .cell .d { font-size: 7.5pt; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+  .cell .d b { display: block; color: var(--ink); font-size: 11pt; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+  .bars { position: relative; flex: 1; min-height: 42mm; margin-top: 2mm; }
+  .bars::before { content: ""; position: absolute; left: 0; right: 0; top: 40%; border-top: 0.25mm dashed #ddd; }
+  .bar { position: absolute; left: 0.4mm; width: 2.6mm; background: var(--teal); border-radius: 0.4mm; }
+  .bar.second { background: #7fc8ba; left: 3.4mm; }
+  .cell .vals { margin-top: 1.4mm; font-size: 7.5pt; line-height: 1.25; font-variant-numeric: tabular-nums; }
+  .cell .vals span { display: block; color: var(--muted); }
+  .cell.empty .bars { height: 34mm; }
+
+  #switcher {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    background: #f4f4f4;
+    color: #111;
+    border-radius: 999px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  }
+  #switcher button {
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: #111;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  #switcher button:hover { background: #333; }
+  #label { min-width: 148px; text-align: center; font-size: 14px; font-weight: 650; padding: 0 6px; }
+</style>
+</head>
+<body>
+  <div id="chrome">
+    <p id="thesis"></p>
+    <div id="count"></div>
+  </div>
+  <div id="stage-wrap"><div id="stage"></div></div>
+  <nav id="switcher" aria-label="PDF layout">
+    <button id="prev" type="button" aria-label="Previous layout">←</button>
+    <div id="label"></div>
+    <button id="next" type="button" aria-label="Next layout">→</button>
+  </nav>
+<script>
+const READINGS = [
+  { t: "2026-10-08 07:40", sys: 128, dia: 82, pul: 71, note: "", kg: "71.2", med: "" },
+  { t: "2026-10-07 21:15", sys: 134, dia: 86, pul: 76, note: "After a walk", kg: "", med: "" },
+  { t: "2026-10-07 07:55", sys: 122, dia: 78, pul: 68, note: "", kg: "", med: "" },
+  { t: "2026-10-06 08:10", sys: 141, dia: 90, pul: 80, note: "Poor sleep", kg: "", med: "" },
+  { t: "2026-10-05 19:40", sys: 130, dia: 84, pul: 73, note: "", kg: "", med: "" },
+  { t: "2026-10-05 07:30", sys: 118, dia: 76, pul: 64, note: "", kg: "71.0", med: "" },
+  { t: "2026-10-04 08:05", sys: 126, dia: 80, pul: 70, note: "", kg: "", med: "Amlodipine (5 mg)" },
+  { t: "2026-10-03 22:05", sys: 138, dia: 88, pul: 79, note: "", kg: "", med: "" },
+  { t: "2026-10-03 07:48", sys: 120, dia: 77, pul: 66, note: "", kg: "", med: "" },
+  { t: "2026-10-02 07:36", sys: 124, dia: 79, pul: 69, note: "", kg: "", med: "" },
+  { t: "2026-10-01 20:12", sys: 148, dia: 94, pul: 88, note: "Stressed", kg: "", med: "" },
+  { t: "2026-10-01 07:42", sys: 119, dia: 75, pul: 65, note: "", kg: "71.6", med: "" },
+  { t: "2026-09-30 08:00", sys: 127, dia: 81, pul: 72, note: "", kg: "", med: "" },
+  { t: "2026-09-29 07:50", sys: 115, dia: 73, pul: 62, note: "", kg: "", med: "" },
+  { t: "2026-09-28 21:30", sys: 136, dia: 87, pul: 77, note: "", kg: "", med: "" },
+  { t: "2026-09-28 07:44", sys: 121, dia: 78, pul: 67, note: "", kg: "", med: "Amlodipine (5 mg)" },
+  { t: "2026-09-27 08:18", sys: 132, dia: 85, pul: 74, note: "", kg: "", med: "" },
+  { t: "2026-09-26 07:33", sys: 112, dia: 70, pul: 61, note: "", kg: "", med: "" },
+  { t: "2026-09-25 19:55", sys: 129, dia: 83, pul: 71, note: "", kg: "", med: "" },
+  { t: "2026-09-25 07:28", sys: 117, dia: 74, pul: 63, note: "", kg: "72.0", med: "" },
+];
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKSHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function parsed(row) {
+  const [date, time] = row.t.split(" ");
+  const [y, m, d] = date.split("-").map(Number);
+  const when = new Date(y, m - 1, d);
+  return { ...row, y, m, d, time, when, key: date };
+}
+const rows = READINGS.map(parsed);
+const oldest = [...rows].reverse();
+const avg = (key) => Math.round(rows.reduce((sum, row) => sum + row[key], 0) / rows.length);
+const maxOf = (key) => rows.reduce((best, row) => row[key] > best[key] ? row : best);
+const minOf = (key) => rows.reduce((best, row) => row[key] < best[key] ? row : best);
+const first = oldest[0];
+const last = rows[0];
+const elapsed = Math.round((last.when - first.when) / 86400000);
+const perDay = (rows.length / elapsed).toFixed(1);
+const stats = {
+  sys: avg("sys"), dia: avg("dia"), pul: avg("pul"),
+  maxSys: maxOf("sys"), maxDia: maxOf("dia"), maxPul: maxOf("pul"),
+  minSys: minOf("sys"), minDia: minOf("dia"), minPul: minOf("pul"),
+};
+
+function shortDate(row) { return `${row.d} ${MONTHS[row.m - 1]}`; }
+function longDate(row) { return `${row.d} ${MONTHS[row.m - 1]} ${row.y}`; }
+function weekday(row) { return WEEKDAYS[row.when.getDay()]; }
+function sysBand(sys) {
+  if (sys < 120) return "normal";
+  if (sys < 130) return "elevated";
+  return "high";
+}
+function diaBand(dia) { return dia < 80 ? "normal" : "high"; }
+function bandLabel(band) { return band === "normal" ? "Normal" : band === "elevated" ? "Elevated" : "High"; }
+function dash(value) { return value || "—"; }
+
+function lineChart(width, height, { grid }) {
+  const low = 60;
+  const high = 160;
+  const padL = 28;
+  const padR = 8;
+  const padT = 10;
+  const padB = 18;
+  const x = (i) => padL + (i / (oldest.length - 1)) * (width - padL - padR);
+  const y = (v) => padT + (1 - (v - low) / (high - low)) * (height - padT - padB);
+  const path = (key) => oldest.map((row, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(row[key]).toFixed(1)}`).join(" ");
+  const dots = (key) => oldest.map((row, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(row[key]).toFixed(1)}" r="2.2"/>`).join("");
+  const ticks = [80, 100, 120, 140];
+  const gridLines = grid ? ticks.map((tick) => `
+    <line x1="${padL}" y1="${y(tick)}" x2="${width - padR}" y2="${y(tick)}" stroke="#e4ddd3" stroke-width="1"/>
+    <text x="${padL - 6}" y="${y(tick) + 3}" text-anchor="end" font-size="9" fill="#7a7268">${tick}</text>
+  `).join("") : "";
+  const xLabels = [0, Math.floor((oldest.length - 1) / 2), oldest.length - 1].map((i) =>
+    `<text x="${x(i)}" y="${height - 2}" text-anchor="middle" font-size="9" fill="#7a7268">${shortDate(oldest[i])}</text>`
+  ).join("");
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Systolic and diastolic over the range">
+    ${gridLines}
+    <path d="${path("sys")}" fill="none" stroke="#009688" stroke-width="2.2"/>
+    <path d="${path("dia")}" fill="none" stroke="#4CAF50" stroke-width="2.2"/>
+    <g fill="#009688">${dots("sys")}</g>
+    <g fill="#4CAF50">${dots("dia")}</g>
+    ${xLabels}
+  </svg>`;
+}
+
+function letter() {
+  const shown = [];
+  let previous = "";
+  for (const row of rows.slice(0, 8)) {
+    if (row.key !== previous) {
+      shown.push(`<tr class="dayhead"><td colspan="5">${weekday(row)} ${longDate(row)}</td></tr>`);
+      previous = row.key;
+    }
+    shown.push(`<tr>
+      <td>${row.time}</td><td>${row.sys}</td><td>${row.dia}</td><td>${row.pul}</td>
+      <td class="note">${row.note}</td>
+    </tr>`);
+  }
+  return `<article class="sheet letter">
+    <header><div class="brand">Janan</div><div class="doctype">Blood pressure report</div></header>
+    <h1>${longDate(first)} — ${longDate(last)}</h1>
+    <p class="meta">${rows.length} readings · ${perDay} per day · mmHg</p>
+    <section class="latest">
+      <div>
+        <span class="k">Latest · ${shortDate(last)}, ${last.time}</span>
+        <strong>${last.sys}<span>/</span>${last.dia}</strong>
+        <em>Pulse ${last.pul}</em>
+      </div>
+      <div class="bands">
+        <div class="band ${sysBand(last.sys)}">Systolic ${bandLabel(sysBand(last.sys))}</div>
+        <div class="band ${diaBand(last.dia)}">Diastolic ${bandLabel(diaBand(last.dia))}</div>
+      </div>
+    </section>
+    <section class="trio">
+      <div><span class="k">Average</span><b>${stats.sys}/${stats.dia}</b><small>pulse ${stats.pul}</small></div>
+      <div><span class="k">Highest</span><b>${stats.maxSys.sys}/${stats.maxSys.dia}</b><small>${shortDate(stats.maxSys)}, ${stats.maxSys.time}</small></div>
+      <div><span class="k">Lowest</span><b>${stats.minSys.sys}/${stats.minSys.dia}</b><small>${shortDate(stats.minSys)}, ${stats.minSys.time}</small></div>
+    </section>
+    <div class="chart">${lineChart(680, 150, { grid: false })}</div>
+    <div class="legend"><span><i style="background:#009688"></i>Systolic</span><span><i style="background:#4CAF50"></i>Diastolic</span></div>
+    <h2>Record</h2>
+    <table>
+      <thead><tr><th>Time</th><th>Sys</th><th>Dia</th><th>Pulse</th><th>Note</th></tr></thead>
+      <tbody>${shown.join("")}</tbody>
+      <tfoot><tr><td colspan="5">${rows.length - 8} earlier readings follow on the next page.</td></tr></tfoot>
+    </table>
+  </article>`;
+}
+
+function poster() {
+  const recent = rows.slice(0, 6).map((row) =>
+    `<li><time>${shortDate(row)} ${row.time}</time><b>${row.sys} / ${row.dia}</b></li>`
+  ).join("");
+  return `<article class="sheet poster">
+    <div class="eyebrow">Janan · ${longDate(first)} – ${longDate(last)}</div>
+    <div class="hero">
+      <div class="k">Latest reading</div>
+      <strong>${last.sys}<span>/</span>${last.dia}</strong>
+      <em>Pulse ${last.pul} · ${weekday(last)} ${longDate(last)}, ${last.time} · mmHg</em>
+    </div>
+    <div class="rule"></div>
+    <section class="tiles">
+      <div><span class="k">Average</span><b>${stats.sys}/${stats.dia}</b></div>
+      <div><span class="k">Highest</span><b>${stats.maxSys.sys}/${stats.maxSys.dia}</b></div>
+      <div><span class="k">Lowest</span><b>${stats.minSys.sys}/${stats.minSys.dia}</b></div>
+    </section>
+    <div class="chart">${lineChart(700, 280, { grid: true })}</div>
+    <section class="recent">
+      <h2>Six most recent</h2>
+      <ol>${recent}</ol>
+    </section>
+  </article>`;
+}
+
+function diary() {
+  const byDay = [];
+  for (const row of rows) {
+    const found = byDay.find((day) => day.key === row.key);
+    if (found) found.rows.push(row);
+    else byDay.push({ key: row.key, rows: [row] });
+  }
+  const days = byDay.map((day) => {
+    const head = day.rows[0];
+    const lines = day.rows.map((row) => `
+      <div class="read"><time>${row.time}</time><b>${row.sys} / ${row.dia}</b><span class="pul">pulse ${row.pul}</span></div>
+      ${row.note ? `<p class="note">${row.note}</p>` : ""}
+    `).join("");
+    return `<section class="day"><div class="when">${weekday(head)}<br>${longDate(head)}</div><div>${lines}</div></section>`;
+  }).join("");
+  return `<article class="sheet diary">
+    <header><div class="brand">Janan</div><div class="range">${rows.length} readings · ${perDay} a day</div></header>
+    <p class="lead">From ${longDate(first)} to ${longDate(last)}, pressure averaged ${stats.sys}/${stats.dia}, with pulse ${stats.pul}. The highest systolic was ${stats.maxSys.sys} on ${longDate(stats.maxSys)}.</p>
+    ${days}
+  </article>`;
+}
+
+function ledger() {
+  const body = rows.map((row) => `<tr>
+    <td>${row.t}</td>
+    <td class="num${row.sys >= 130 ? " flag" : ""}">${row.sys}</td>
+    <td class="num${row.dia >= 90 ? " flag" : ""}">${row.dia}</td>
+    <td class="num">${row.pul}</td>
+    <td class="num">${dash(row.kg)}</td>
+    <td>${row.note || row.med}</td>
+  </tr>`).join("");
+  return `<article class="sheet ledger">
+    <div class="stamp"><b>JANAN</b><span>BP LEDGER</span><span>PAGE 1</span></div>
+    <div class="span"><span>${first.key} → ${last.key}</span><span>N=${rows.length}</span><span>mmHg</span></div>
+    <table class="matrix">
+      <thead><tr><th></th><th>SYS</th><th>DIA</th><th>PUL</th></tr></thead>
+      <tbody>
+        <tr><td>AVG</td><td>${stats.sys}</td><td>${stats.dia}</td><td>${stats.pul}</td></tr>
+        <tr><td>MAX</td><td>${stats.maxSys.sys}</td><td>${stats.maxDia.dia}</td><td>${stats.maxPul.pul}</td></tr>
+        <tr><td>MIN</td><td>${stats.minSys.sys}</td><td>${stats.minDia.dia}</td><td>${stats.minPul.pul}</td></tr>
+      </tbody>
+    </table>
+    <table class="log">
+      <thead><tr><th>TIME</th><th class="num">SYS</th><th class="num">DIA</th><th class="num">PUL</th><th class="num">KG</th><th>NOTE</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+    <footer><span>Bold marks systolic at or above 130, diastolic at or above 90.</span><span>${perDay}/day</span></footer>
+  </article>`;
+}
+
+function strip() {
+  const start = new Date(2026, 8, 25);
+  const weeks = [0, 1].map((week) => {
+    const cells = Array.from({ length: 7 }, (_, index) => {
+      const day = new Date(start);
+      day.setDate(start.getDate() + week * 7 + index);
+      const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+      const found = oldest.filter((row) => row.key === key);
+      const bars = found.map((row, i) => {
+        const span = 160 - 60;
+        const top = ((160 - row.sys) / span) * 100;
+        const height = Math.max(4, ((row.sys - row.dia) / span) * 100);
+        return `<i class="bar${i ? " second" : ""}" style="top:${top.toFixed(1)}%;height:${height.toFixed(1)}%"></i>`;
+      }).join("");
+      const vals = found.map((row) => `<span>${row.sys}/${row.dia}</span>`).join("");
+      return `<div class="cell${found.length ? "" : " empty"}">
+        <div class="d">${WEEKSHORT[day.getDay()]}<b>${day.getDate()}</b></div>
+        <div class="bars">${bars}</div>
+        <div class="vals">${vals}</div>
+      </div>`;
+    }).join("");
+    const from = new Date(start);
+    from.setDate(start.getDate() + week * 7);
+    const to = new Date(start);
+    to.setDate(start.getDate() + week * 7 + 6);
+    return `<section><h2>${from.getDate()} ${MONTHS[from.getMonth()]} – ${to.getDate()} ${MONTHS[to.getMonth()]}</h2><div class="week">${cells}</div></section>`;
+  }).join("");
+  return `<article class="sheet strip">
+    <aside>
+      <div class="brand">Janan</div>
+      <div class="range">${longDate(first)}<br>to ${longDate(last)}</div>
+      <div class="latest">
+        <div class="k">Latest</div>
+        <strong>${last.sys}<span>/${last.dia}</span></strong>
+        <em>Pulse ${last.pul}<br>${shortDate(last)}, ${last.time}</em>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Average</div><b>${stats.sys} / ${stats.dia}</b></div>
+        <div class="stat"><div class="k">Highest</div><b>${stats.maxSys.sys} / ${stats.maxSys.dia}</b></div>
+        <div class="stat"><div class="k">Lowest</div><b>${stats.minSys.sys} / ${stats.minSys.dia}</b></div>
+      </div>
+      <div class="foot">${rows.length} readings<br>${perDay} per day<br>Unit mmHg</div>
+    </aside>
+    <main>${weeks}</main>
+  </article>`;
+}
+
+const VARIANTS = [
+  { id: "letter", key: "A", name: "Letter", thesis: "A letter you hand over. The latest reading leads, the chart is a footnote, and the log is grouped by day.", render: letter },
+  { id: "poster", key: "B", name: "Poster", thesis: "One page to send or photograph. The latest reading is the page. Only the six newest rows stay.", render: poster },
+  { id: "diary", key: "C", name: "Diary", thesis: "Read it like a diary. Days are headings, readings sit under them, and there is no chart and no grid.", render: diary },
+  { id: "ledger", key: "D", name: "Ledger", thesis: "A lab printout. Every column, no picture, averages in a tight matrix, bold only where a value crosses the line.", render: ledger },
+  { id: "strip", key: "E", name: "Strip", thesis: "Two weeks as a calendar. Averages stay in a side rail. Each day is a range bar from diastolic up to systolic.", render: strip },
+];
+
+const stage = document.getElementById("stage");
+const thesis = document.getElementById("thesis");
+const label = document.getElementById("label");
+const count = document.getElementById("count");
+
+function currentId() {
+  const id = new URLSearchParams(location.search).get("variant");
+  return VARIANTS.some((variant) => variant.id === id) ? id : VARIANTS[0].id;
+}
+function show(id, push) {
+  const index = VARIANTS.findIndex((variant) => variant.id === id);
+  const variant = VARIANTS[index];
+  stage.innerHTML = variant.render();
+  thesis.innerHTML = `<strong>${variant.key} · ${variant.name}.</strong> ${variant.thesis}<small>Same 20 readings, 25 Sep–8 Oct 2026. Arrow keys move between layouts.</small>`;
+  label.textContent = `${variant.key} · ${variant.name}`;
+  count.textContent = `${index + 1} / ${VARIANTS.length}`;
+  const url = new URL(location.href);
+  url.searchParams.set("variant", variant.id);
+  history.replaceState(null, "", url);
+  fit();
+}
+function step(delta) {
+  const index = VARIANTS.findIndex((variant) => variant.id === currentId());
+  const next = (index + delta + VARIANTS.length) % VARIANTS.length;
+  show(VARIANTS[next].id);
+}
+function fit() {
+  const scale = Math.min(1, (window.innerWidth - 28) / stage.firstElementChild.offsetWidth);
+  stage.style.transform = `scale(${scale})`;
+  stage.parentElement.style.height = `${stage.firstElementChild.offsetHeight * scale + 8}px`;
+}
+document.getElementById("prev").addEventListener("click", () => step(-1));
+document.getElementById("next").addEventListener("click", () => step(1));
+window.addEventListener("keydown", (event) => {
+  const tag = document.activeElement?.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  if (event.key === "ArrowLeft") step(-1);
+  if (event.key === "ArrowRight") step(1);
+});
+window.addEventListener("resize", fit);
+show(currentId());
+</script>
+</body>
+</html>

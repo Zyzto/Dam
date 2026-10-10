@@ -170,6 +170,14 @@ class ExportImportScreen extends ConsumerWidget {
                           pdfExportSettings.exportData = value;
                         },),
                     if (pdfExportSettings.exportData)
+                      SwitchListTile(
+                        title: Text('exportPdfSeparateTables'.tr()),
+                        value: pdfExportSettings.separateWeightMedicineTables,
+                        onChanged: (value) {
+                          pdfExportSettings.separateWeightMedicineTables = value;
+                        },
+                      ),
+                    if (pdfExportSettings.exportData)
                       Column(
                         children: [
                           NumberInputListTile(

@@ -1,4 +1,5 @@
 import 'package:blood_pressure_app/core/layout/responsive_sheet.dart';
+import 'package:blood_pressure_app/core/widgets/sheet_helpers.dart';
 import 'package:blood_pressure_app/features/export_import/ui/export_field_format_documentation_screen.dart';
 import 'package:blood_pressure_app/l10n/western_digits.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -80,15 +81,24 @@ class _EnterTimeFormatDialogState extends State<EnterTimeFormatDialog> {
               ),
             ),
           ),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: TextButton(
-              onPressed: () {
-                if (timeFormatFieldController.text.isNotEmpty) {
-                  Navigator.pop(context, timeFormatFieldController.text);
-                }
-              },
-              child: Text('btnSave'.tr()),
+          const SizedBox(height: 20),
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            spacing: 8,
+            overflowAlignment: OverflowBarAlignment.end,
+            overflowSpacing: 8,
+            children: responsiveSheetActions(
+              context,
+              actions: [
+                FilledButton(
+                  onPressed: () {
+                    if (timeFormatFieldController.text.isNotEmpty) {
+                      Navigator.pop(context, timeFormatFieldController.text);
+                    }
+                  },
+                  child: Text('btnSave'.tr()),
+                ),
+              ],
             ),
           ),
         ],

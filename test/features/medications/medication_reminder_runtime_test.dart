@@ -21,7 +21,7 @@ void main() {
     expect(medicationReminderNotificationTitle(), 'تذكير الدواء');
     expect(
       formatMedicationDoseReminderBody(schedule, 480),
-      'Amlodipine · 5 mg · قبل الطعام',
+      'Amlodipine · 5 مغ · قبل الطعام',
     );
     expect(medicationReminderWidgetLabels(), {
       'statusAllSet': 'تم',

@@ -11,6 +11,7 @@ import 'package:blood_pressure_app/core/repository/powersync_medicine_repository
 import 'package:blood_pressure_app/core/repository/powersync_note_repository.dart';
 import 'package:blood_pressure_app/core/repository/repository_providers.dart';
 import 'package:blood_pressure_app/core/settings/storage_providers.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/data_util/consistent_future_builder.dart';
 import 'package:blood_pressure_app/domain/domain.dart';
 import 'package:blood_pressure_app/features/bluetooth/ui/ble_launch_sync_host.dart';
@@ -30,6 +31,7 @@ import 'package:blood_pressure_app/features/settings/graph_screen.dart';
 import 'package:blood_pressure_app/features/settings/medicine_manager_screen.dart';
 import 'package:blood_pressure_app/features/settings/registry.dart';
 import 'package:blood_pressure_app/features/shell/app_shell.dart';
+import 'package:blood_pressure_app/features/shell/shell_nav_chrome.dart';
 import 'package:blood_pressure_app/l10n/western_digits.dart';
 import 'package:blood_pressure_app/logging.dart';
 import 'package:blood_pressure_app/model/bluetooth_input_mode.dart';
@@ -619,10 +621,17 @@ class _AppRootState extends ConsumerState<_AppRoot> {
             textDirection: isRtl ? ui.TextDirection.rtl : ui.TextDirection.ltr,
             child: child ?? const SizedBox.shrink(),
           );
-          return BleLaunchSyncHost(
-            key: widget.launchSyncHostKey,
-            homePresence: widget.homePresence,
-            child: directed,
+          return AppToastHost(
+            itemWidthBuilder: ShellNavChrome.feedbackItemWidth,
+            bottomInsetBuilder: ShellNavChrome.feedbackBottomInset,
+            startInsetBuilder: ShellNavChrome.feedbackStartInset,
+            endInsetBuilder: ShellNavChrome.feedbackEndInset,
+            relayout: ShellNavChrome.actionColumnWidth,
+            child: BleLaunchSyncHost(
+              key: widget.launchSyncHostKey,
+              homePresence: widget.homePresence,
+              child: directed,
+            ),
           );
         },
         initialRoute: widget.initialRoute.path,

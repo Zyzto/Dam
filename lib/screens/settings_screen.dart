@@ -7,6 +7,7 @@ import 'package:blood_pressure_app/components/color_picker.dart';
 import 'package:blood_pressure_app/core/layout/responsive_sheet.dart';
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
 import 'package:blood_pressure_app/core/widgets/sheet_helpers.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/features/settings/app_settings.dart';
 import 'package:blood_pressure_app/features/settings/bluetooth_devices_screen.dart';
 import 'package:blood_pressure_app/features/settings/body_profile_screen.dart';
@@ -757,7 +758,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _exportSettings(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
     final fileSettingsLoader = context.fileSettingsLoader;
     final controller = ProviderScope.containerOf(
       context,
@@ -768,9 +768,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       edadatJson: jsonEncode(dumpEdadatController(controller)),
     );
     if (archive == null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('errCantCreateArchive'.tr())),
-      );
+      if (context.mounted) context.showError('errCantCreateArchive'.tr());
       return;
     }
     final compressed = ZipEncoder().encodeBytes(archive);
@@ -782,7 +780,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _importSettings(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
     final exportSettings = context.exportSettings;
     final csvExportSettings = context.csvExportSettings;
     final pdfExportSettings = context.pdfExportSettings;
@@ -790,25 +787,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final intervalStoreManager = context.intervalStoreManager;
     final exportColumnsManager = context.exportColumnsManager;
     final file = await FilePicker.pickFile();
+    if (!context.mounted) return;
     if (file == null) {
-      messenger.showSnackBar(SnackBar(content: Text('errNoFileOpened'.tr())));
+      context.showError('errNoFileOpened'.tr());
       return;
     }
     final path = file.path;
     if (path == null) {
-      messenger.showSnackBar(SnackBar(content: Text('errCantReadFile'.tr())));
+      context.showError('errCantReadFile'.tr());
       return;
     }
     if (path.endsWith('db')) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('error'.tr(namedArgs: {'msg': 'Format too old'})),
-        ),
-      );
+      context.showError('error'.tr(namedArgs: {'msg': 'Format too old'}));
       return;
     }
     if (!path.endsWith('zip')) {
-      messenger.showSnackBar(SnackBar(content: Text('errNotImportable'.tr())));
+      context.showError('errNotImportable'.tr());
       return;
     }
     try {
@@ -834,15 +828,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           await importEdadatMap(controller, raw);
         }
       }
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'success'.tr(namedArgs: {'msg': 'importSettings'.tr()}),
-          ),
-        ),
+      if (!context.mounted) return;
+      context.showSuccess(
+        'success'.tr(namedArgs: {'msg': 'importSettings'.tr()}),
       );
     } on FormatException catch (e, stack) {
-      messenger.showSnackBar(SnackBar(content: Text('invalidZip'.tr())));
+      if (context.mounted) context.showError('invalidZip'.tr());
       Log.warning('invalid zip', error: e, stackTrace: stack);
     }
   }

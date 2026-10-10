@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/features/bluetooth/backend/bluetooth_backend.dart';
 import 'package:blood_pressure_app/features/bluetooth/background/bluetooth_foreground_service.dart';
 import 'package:blood_pressure_app/features/bluetooth/logic/ble_launch_sync.dart';
@@ -153,6 +154,10 @@ class BleLaunchSyncView extends ChangeNotifier {
 
   /// Link shared by the AppBar indicator and its attached detail panel.
   final LayerLink indicatorLink = LayerLink();
+
+  /// Identifies the AppBar indicator so the detail panel can stay on screen
+  /// when a trailing control, such as the measurement filter, insets it.
+  final GlobalKey indicatorKey = GlobalKey();
 
   /// Current sync stage.
   BleLaunchSyncProgress get progress => _progress;
@@ -473,13 +478,23 @@ class _BleLaunchSyncHostState extends ConsumerState<BleLaunchSyncHost> {
       BleLaunchSyncStatus.notFound => 'meterNotFound'.tr(),
       BleLaunchSyncStatus.skipped || BleLaunchSyncStatus.cancelled => null,
     };
-    if (message == null) return;
+    if (message == null || !mounted) return;
     final duration = widget.resultBannerDuration > Duration.zero
         ? widget.resultBannerDuration
         : const Duration(seconds: 4);
-    ScaffoldMessenger.maybeOf(
-      context,
-    )?.showSnackBar(SnackBar(content: Text(message), duration: duration));
+    switch (result.status) {
+      case BleLaunchSyncStatus.imported:
+        context.showSuccess(message, duration: duration);
+      case BleLaunchSyncStatus.upToDate:
+        context.showToast(message, duration: duration);
+      case BleLaunchSyncStatus.bluetoothOff:
+      case BleLaunchSyncStatus.failed:
+      case BleLaunchSyncStatus.notFound:
+        context.showError(message, duration: duration);
+      case BleLaunchSyncStatus.skipped:
+      case BleLaunchSyncStatus.cancelled:
+        break;
+    }
   }
 
   void _onProgress() {
@@ -613,10 +628,17 @@ class _BleLaunchSyncAttachedPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     // AppBar actions sit on the end edge. Anchor the panel there so Arabic
-    // (RTL) grows the card inward instead of off the leading side.
+    // (RTL) grows the card inward instead of off the leading side. A trailing
+    // filter insets that anchor, so shift the card back inside the screen.
     final direction = Directionality.of(context);
     final topEnd = AlignmentDirectional.topEnd.resolve(direction);
     final bottomEnd = AlignmentDirectional.bottomEnd.resolve(direction);
+    final endIsRight = topEnd == Alignment.topRight;
+    final placement = _syncPanelPlacement(
+      screenWidth: screenWidth,
+      anchorEnd: _indicatorAnchorEnd(view.indicatorKey, endIsRight: endIsRight),
+      endIsRight: endIsRight,
+    );
     return AnimatedBuilder(
       animation: transition,
       builder: (context, _) => Stack(
@@ -638,14 +660,14 @@ class _BleLaunchSyncAttachedPanel extends StatelessWidget {
               showWhenUnlinked: false,
               targetAnchor: bottomEnd,
               followerAnchor: topEnd,
-              offset: const Offset(0, 12),
+              offset: Offset(placement.dx, 12),
               child: Opacity(
                 opacity: transition.value,
                 child: Transform.scale(
                   alignment: topEnd,
                   scale: 0.9 + transition.value * 0.1,
                   child: SizedBox(
-                    width: screenWidth < 444 ? screenWidth - 24 : 420,
+                    width: placement.width,
                     child: BleLaunchSyncCard(
                       progress: view.progress,
                       paused: view.paused,
@@ -662,4 +684,56 @@ class _BleLaunchSyncAttachedPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SyncPanelPlacement {
+  const _SyncPanelPlacement({required this.width, required this.dx});
+
+  final double width;
+  final double dx;
+}
+
+double? _indicatorAnchorEnd(GlobalKey key, {required bool endIsRight}) {
+  final target = key.currentContext?.findRenderObject();
+  if (target is! RenderBox || !target.hasSize || !target.attached) return null;
+  final origin = target.localToGlobal(Offset.zero);
+  return endIsRight ? origin.dx + target.size.width : origin.dx;
+}
+
+/// Keeps a card anchored to [anchorEnd] inside the screen.
+///
+/// The measurement filter sits outside the Bluetooth indicator, so a card as
+/// wide as the screen overflows the opposite edge. Shift it back in. The card
+/// already insets its own contents, so the outer box may sit on the screen edge.
+_SyncPanelPlacement _syncPanelPlacement({
+  required double screenWidth,
+  required double? anchorEnd,
+  required bool endIsRight,
+}) {
+  final full = screenWidth - 24;
+  var width = full < 420 ? full : 420.0;
+  if (width < 0) width = 0;
+  if (anchorEnd == null || screenWidth <= 0) {
+    return _SyncPanelPlacement(width: width, dx: 0);
+  }
+
+  var start = endIsRight ? anchorEnd - width : anchorEnd;
+  var end = start + width;
+  if (start < 0) {
+    final shift = -start;
+    start += shift;
+    end += shift;
+  }
+  if (end > screenWidth) {
+    final shift = end - screenWidth;
+    start -= shift;
+    end -= shift;
+  }
+  if (start < 0) {
+    start = 0;
+    width = screenWidth;
+    end = screenWidth;
+  }
+  final aligned = endIsRight ? end : start;
+  return _SyncPanelPlacement(width: width, dx: aligned - anchorEnd);
 }

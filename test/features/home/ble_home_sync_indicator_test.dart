@@ -17,11 +17,17 @@ Future<Widget> _indicator(
   BleLaunchSyncView view, {
   TestSettingsSeed? settings,
   Locale locale = const Locale('en'),
+  Widget? trailing,
 }) => materialApp(
   BleLaunchSyncScope(
     notifier: view,
     child: Scaffold(
-      appBar: AppBar(actions: const [BleHomeSyncIndicator()]),
+      appBar: AppBar(
+        actions: [
+          const BleHomeSyncIndicator(),
+          ?trailing,
+        ],
+      ),
       body: const BleLaunchSyncPopout(),
     ),
   ),
@@ -32,10 +38,30 @@ Future<Widget> _indicator(
 void _expectPanelOnScreen(WidgetTester tester) {
   final card = tester.getRect(find.byType(BleLaunchSyncCard));
   final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
-  expect(card.left, greaterThanOrEqualTo(0));
-  expect(card.right, lessThanOrEqualTo(screen.width));
+  expect(card.left, greaterThanOrEqualTo(0), reason: 'card $card screen $screen');
+  expect(card.right, lessThanOrEqualTo(screen.width), reason: 'card $card screen $screen');
   expect(card.top, greaterThanOrEqualTo(0));
   expect(card.bottom, lessThanOrEqualTo(screen.height));
+}
+
+/// The filter sits outside the indicator, on the screen's end edge.
+/// The card must stay on screen and still cover that indicator.
+void _expectPanelBesideFilter(WidgetTester tester) {
+  final card = tester.getRect(find.byType(BleLaunchSyncCard));
+  final indicator = tester.getRect(find.byType(BleHomeSyncIndicator));
+  final filter = tester.getRect(find.byIcon(Icons.filter_list));
+  final rtl = Directionality.of(
+        tester.element(find.byType(BleHomeSyncIndicator)),
+      ) ==
+      TextDirection.rtl;
+  _expectPanelOnScreen(tester);
+  expect(
+    rtl ? filter.right <= indicator.left + 1 : filter.left >= indicator.right - 1,
+    isTrue,
+    reason: 'rtl=$rtl filter $filter indicator $indicator',
+  );
+  expect(card.left, lessThanOrEqualTo(indicator.left), reason: 'card $card indicator $indicator');
+  expect(card.right, greaterThanOrEqualTo(indicator.right), reason: 'card $card indicator $indicator');
 }
 
 void main() {
@@ -218,6 +244,36 @@ void main() {
     expect(find.byType(BleLaunchSyncCard), findsOneWidget);
     _expectPanelOnScreen(tester);
   });
+
+  for (final locale in const [Locale('en'), Locale('ar')]) {
+    testWidgets(
+      'keeps the sync panel on screen beside a trailing filter (${locale.languageCode})',
+      (tester) async {
+        usePhoneTestSurface(tester);
+        final view = BleLaunchSyncView()
+          ..setProgress(const BleLaunchSyncProgress(
+            phase: BleLaunchSyncPhase.scanning,
+          ));
+        await pumpApp(
+          tester,
+          await _indicator(
+            view,
+            locale: locale,
+            trailing: IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.filter_list),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byType(BleHomeSyncIndicator));
+        await tester.pump(const Duration(milliseconds: 320));
+
+        expect(find.byType(BleLaunchSyncCard), findsOneWidget);
+        _expectPanelBesideFilter(tester);
+      },
+    );
+  }
 
   testWidgets('keeps a grey-white bluetooth icon when nothing new was imported', (tester) async {
     final view = BleLaunchSyncView()

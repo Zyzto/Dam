@@ -125,6 +125,7 @@ void main() {
       expect(result, 123.76);
     });
     testWidgets('should not allow entering text', (tester) async {
+      usePhoneTestSurface(tester);
       double? result = -1;
       await loadDialog(tester, (context) async => result = await showNumberInputDialog(context));
       expect(find.byType(InputDialog), findsOneWidget);

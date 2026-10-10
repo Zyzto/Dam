@@ -1,5 +1,122 @@
 part of 'medication_reminders_screens.dart';
 
+/// Loads the funnel warp used while the dose card opens and closes.
+class _MedicationGenieShader {
+  static ui.FragmentProgram? program;
+  static Future<void>? _loading;
+
+  static void preload() {
+    _loading ??= _load();
+  }
+
+  static Future<void> _load() async {
+    try {
+      program = await ui.FragmentProgram.fromAsset(
+        'shaders/medication_genie.frag',
+      );
+    } catch (_) {
+      program = null;
+    }
+  }
+}
+
+/// Squashes the whole dose card into a funnel aimed at the reminder button.
+///
+/// The card's own proportions change on the way: the far edge stays wide while
+/// the edge on the button narrows, and every part of the card is drawn inside
+/// that shape.
+class _MedicationGenieMorph extends StatefulWidget {
+  const _MedicationGenieMorph({
+    required this.progress,
+    required this.sourceSize,
+    required this.opensAbove,
+    required this.fromRight,
+    required this.child,
+  });
+
+  final double progress;
+  final Size sourceSize;
+  final bool opensAbove;
+  final bool fromRight;
+  final Widget child;
+
+  @override
+  State<_MedicationGenieMorph> createState() => _MedicationGenieMorphState();
+}
+
+class _MedicationGenieMorphState extends State<_MedicationGenieMorph> {
+  ui.FragmentShader? _shader;
+
+  @override
+  void dispose() {
+    _shader?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = widget.progress.clamp(0.0, 1.0);
+    final program = _MedicationGenieShader.program;
+    if (progress >= _dosePanelWarpEnd ||
+        program == null ||
+        !ui.ImageFilter.isShaderFilterSupported) {
+      return _genieSquashFallback(context, progress);
+    }
+
+    _shader?.dispose();
+    _shader = program.fragmentShader();
+    final panelWidth = _panelWidth(context);
+    final buttonFrac = (widget.sourceSize.width / panelWidth).clamp(0.04, 0.8);
+    final warp = (progress / _dosePanelWarpEnd).clamp(0.0, 1.0);
+    _shader!
+      ..setFloat(2, buttonFrac)
+      ..setFloat(3, warp)
+      ..setFloat(4, widget.fromRight ? 1 : 0)
+      ..setFloat(5, widget.opensAbove ? 1 : 0);
+
+    // The card shadow paints outside the layout box and would push the neck
+    // off the button. Clip to the card so the neck stays on the top edge.
+    return ImageFiltered(
+      imageFilter: ui.ImageFilter.shader(_shader!),
+      child: ClipRect(child: widget.child),
+    );
+  }
+
+  double _panelWidth(BuildContext context) {
+    final card = context.findRenderObject();
+    if (card is RenderBox && card.hasSize && card.size.width > 1) {
+      return card.size.width;
+    }
+    return math.max(
+      1.0,
+      math.min(MediaQuery.sizeOf(context).width - 32, 400),
+    );
+  }
+
+  /// Used only when the funnel shader cannot run. Width and height scale on
+  /// different curves so the card still changes proportion.
+  Widget _genieSquashFallback(BuildContext context, double progress) {
+    if (progress >= _dosePanelWarpEnd) return widget.child;
+    final warp = (progress / _dosePanelWarpEnd).clamp(0.0, 1.0);
+    final panelWidth = _panelWidth(context);
+    final buttonFrac = (widget.sourceSize.width / panelWidth).clamp(0.08, 1.0);
+    final rise = Curves.easeOutCubic.transform((warp / 0.78).clamp(0.0, 1.0));
+    final mouth = Curves.easeInOutCubic.transform(warp);
+    final scaleX = buttonFrac + (1 - buttonFrac) * mouth;
+    final scaleY = (buttonFrac * 0.45) + (1 - buttonFrac * 0.45) * rise;
+    final anchorX = widget.fromRight ? (1 - buttonFrac) : (-1 + buttonFrac);
+    final alignment = widget.opensAbove
+        ? Alignment(anchorX, 1)
+        : const Alignment(0, -1);
+    return Transform(
+      alignment: alignment,
+      transform: Matrix4.diagonal3Values(scaleX, scaleY, 1),
+      filterQuality: FilterQuality.medium,
+      child: widget.child,
+    );
+  }
+}
+
 class _MedicationModalScrimPainter extends CustomPainter {
   _MedicationModalScrimPainter({
     required this.fabRect,
@@ -37,145 +154,6 @@ class _MedicationModalScrimPainter extends CustomPainter {
       oldDelegate.fabShape != fabShape ||
       oldDelegate.textDirection != textDirection ||
       oldDelegate.animation != animation;
-}
-
-/// Morphs the timer button's shape into the dose panel, like a plume unfurling
-/// from the button. In the compact home layout, the plume grows up and away
-/// from the FAB before settling into the panel's rounded rectangle.
-class _MedicationGenieClipper extends CustomClipper<Path> {
-  const _MedicationGenieClipper({
-    required this.progress,
-    required this.sourceSize,
-    required this.panelRadius,
-    required this.sourceShape,
-    required this.textDirection,
-    required this.opensAbove,
-  });
-
-  final double progress;
-  final double sourceSize;
-  final double panelRadius;
-  final ShapeBorder sourceShape;
-  final ui.TextDirection textDirection;
-  final bool opensAbove;
-
-  @override
-  Path getClip(Size size) {
-    if (size.width <= 0 || size.height <= 0) return Path();
-    final t = progress.clamp(0.0, 1.0);
-    final fullRect = Offset.zero & size;
-    final finalRadius = panelRadius.clamp(
-      0.0,
-      math.min(size.width, size.height) / 2,
-    );
-    if (t >= 1) {
-      return Path()..addRRect(
-        RRect.fromRectAndRadius(fullRect, Radius.circular(finalRadius)),
-      );
-    }
-
-    final seedWidth = math.min(sourceSize, size.width);
-    final seedHeight = math.min(sourceSize, size.height);
-    final spread = Curves.easeInOutCubic.transform(t);
-    final rise = Curves.easeOutCubic.transform((t / 0.84).clamp(0.0, 1.0));
-    final revealWidth = seedWidth + (size.width - seedWidth) * spread;
-    final revealHeight = seedHeight + (size.height - seedHeight) * rise;
-    final sourceRadius = switch (sourceShape) {
-      CircleBorder() => seedWidth / 2,
-      RoundedRectangleBorder(:final borderRadius) =>
-        borderRadius.resolve(textDirection).topLeft.x,
-      _ => seedWidth / 2,
-    };
-    final radius = (sourceRadius + (finalRadius - sourceRadius) * t).clamp(
-      0.0,
-      math.min(revealWidth, revealHeight) / 2,
-    );
-
-    if (!opensAbove) {
-      final rect = Rect.fromLTWH(
-        (size.width - revealWidth) / 2,
-        0,
-        revealWidth,
-        revealHeight,
-      );
-      return Path()
-        ..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(radius)));
-    }
-
-    final fromRight = textDirection == ui.TextDirection.ltr;
-    final left = fromRight ? size.width - revealWidth : 0.0;
-    final top = size.height - revealHeight;
-    final bounds = Rect.fromLTWH(left, top, revealWidth, revealHeight);
-    final edgeSpace = fromRight ? bounds.left : size.width - bounds.right;
-    final flare =
-        math.min(math.min(28.0, revealWidth * 0.14), edgeSpace) *
-        math.sin(math.pi * t);
-    return _plumePath(bounds, radius, flare, fromRight: fromRight);
-  }
-
-  Path _plumePath(
-    Rect bounds,
-    double radius,
-    double flare, {
-    required bool fromRight,
-  }) {
-    final left = bounds.left;
-    final top = bounds.top;
-    final right = bounds.right;
-    final bottom = bounds.bottom;
-    final r = radius.clamp(0.0, math.min(bounds.width, bounds.height) / 2);
-    final path = Path();
-
-    if (fromRight) {
-      path
-        ..moveTo(right, top + r)
-        ..lineTo(right, bottom - r)
-        ..quadraticBezierTo(right, bottom, right - r, bottom)
-        ..lineTo(left + r, bottom)
-        ..quadraticBezierTo(left, bottom, left, bottom - r)
-        ..cubicTo(
-          left - flare,
-          bottom - bounds.height * 0.24,
-          left - flare,
-          top + bounds.height * 0.24,
-          left,
-          top + r,
-        )
-        ..quadraticBezierTo(left, top, left + r, top)
-        ..lineTo(right - r, top)
-        ..quadraticBezierTo(right, top, right, top + r)
-        ..close();
-    } else {
-      path
-        ..moveTo(left, top + r)
-        ..lineTo(left, bottom - r)
-        ..quadraticBezierTo(left, bottom, left + r, bottom)
-        ..lineTo(right - r, bottom)
-        ..quadraticBezierTo(right, bottom, right, bottom - r)
-        ..cubicTo(
-          right + flare,
-          bottom - bounds.height * 0.24,
-          right + flare,
-          top + bounds.height * 0.24,
-          right,
-          top + r,
-        )
-        ..quadraticBezierTo(right, top, right - r, top)
-        ..lineTo(left + r, top)
-        ..quadraticBezierTo(left, top, left, top + r)
-        ..close();
-    }
-    return path;
-  }
-
-  @override
-  bool shouldReclip(_MedicationGenieClipper oldClipper) =>
-      oldClipper.progress != progress ||
-      oldClipper.sourceSize != sourceSize ||
-      oldClipper.panelRadius != panelRadius ||
-      oldClipper.sourceShape != sourceShape ||
-      oldClipper.textDirection != textDirection ||
-      oldClipper.opensAbove != opensAbove;
 }
 
 ShapeBorder _medicationFabShape(

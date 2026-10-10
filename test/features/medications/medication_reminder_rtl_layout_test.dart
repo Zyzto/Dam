@@ -75,7 +75,7 @@ void main() {
     expect(bounds.right, lessThanOrEqualTo(390));
     expect(bounds.bottom, lessThanOrEqualTo(844));
     expect(bounds.left, closeTo(fabBounds.left, 1));
-    expect(bounds.bottom, closeTo(fabBounds.top, 1));
+    expect(bounds.bottom, closeTo(fabBounds.top - 8, 1));
 
     final addReminder = find.text('إضافة تذكير');
     expect(addReminder, findsOneWidget);
@@ -121,7 +121,7 @@ void main() {
     final bounds = tester.getRect(panel);
     final fabBounds = tester.getRect(reminderButton);
     expect(bounds.right, closeTo(fabBounds.right, 1));
-    expect(bounds.bottom, closeTo(fabBounds.top, 1));
+    expect(bounds.bottom, closeTo(fabBounds.top - 8, 1));
     expect(tester.takeException(), isNull);
   });
 }

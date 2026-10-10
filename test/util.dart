@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/features/input/forms/measurement_value_field.dart';
 import 'package:blood_pressure_app/features/settings/app_settings.dart';
 import 'package:blood_pressure_app/features/settings/initialize_app_settings.dart';
@@ -390,11 +391,13 @@ Widget _easyApp({
               context.localizationDelegates,
             ),
             supportedLocales: context.supportedLocales,
-            builder: (context, appChild) => Directionality(
-              textDirection: resolved.languageCode == 'ar'
-                  ? ui.TextDirection.rtl
-                  : ui.TextDirection.ltr,
-              child: appChild ?? const SizedBox.shrink(),
+            builder: (context, appChild) => AppToastHost(
+              child: Directionality(
+                textDirection: resolved.languageCode == 'ar'
+                    ? ui.TextDirection.rtl
+                    : ui.TextDirection.ltr,
+                child: appChild ?? const SizedBox.shrink(),
+              ),
             ),
             home: wrapScaffold ? Scaffold(body: child) : child,
             routes: routes,

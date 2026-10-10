@@ -421,7 +421,7 @@ class _IntakeCard extends StatelessWidget {
                 DetailFormValue(
                   label: 'dosis'.tr(),
                   value: formatDoseAmount(intake.dosis.mg),
-                  unit: intake.medicine.unit.symbol,
+                  unit: intake.medicine.unit.localizedSymbol,
                   accent: color,
                   hopToken: doseHopToken,
                 ),

@@ -9,6 +9,7 @@ import 'package:blood_pressure_app/features/settings/registry.dart';
 import 'package:blood_pressure_app/model/bluetooth_input_mode.dart';
 import 'package:blood_pressure_app/model/known_ble_device.dart';
 import 'package:flutter/material.dart';
+import 'package:safaeh/safaeh.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../util.dart';
@@ -157,7 +158,10 @@ void main() {
 
     expect(find.text('home'), findsOneWidget);
     expect(find.byType(BleLaunchSyncCard), findsNothing);
-    expect(find.byType(SnackBar), findsNothing);
+    expect(
+      find.byType(SafaehFeedbackSurface, skipOffstage: false),
+      findsNothing,
+    );
   });
 
   testWidgets('does not start the foreground service for a skipped sync', (
@@ -251,8 +255,14 @@ void main() {
     await tester.pump();
 
     expect(find.byType(BleLaunchSyncCard), findsNothing);
-    expect(find.byType(SnackBar), findsOneWidget);
-    expect(find.text('Imported 3 new measurements'), findsOneWidget);
+    expect(
+      find.byType(SafaehFeedbackSurface, skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Imported 3 new measurements', skipOffstage: false),
+      findsOneWidget,
+    );
     expect(find.text('home'), findsOneWidget);
   });
 
@@ -366,7 +376,10 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('No new measurements'), findsOneWidget);
+    expect(
+      find.text('No new measurements', skipOffstage: false),
+      findsOneWidget,
+    );
     expect(find.byType(BleLaunchSyncCard), findsNothing);
   });
 
@@ -450,7 +463,10 @@ void main() {
 
     await tester.tap(find.byType(BleHomeSyncIndicator));
     await tester.pump();
-    expect(find.text('Meter not found'), findsWidgets);
+    expect(
+      find.text('Meter not found', skipOffstage: false),
+      findsWidgets,
+    );
     expect(find.byTooltip('Search again'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Search again'));

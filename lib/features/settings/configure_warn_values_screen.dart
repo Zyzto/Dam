@@ -1,6 +1,7 @@
 import 'package:blood_pressure_app/components/custom_banner.dart';
 import 'package:blood_pressure_app/components/input_dialog.dart';
 import 'package:blood_pressure_app/components/snack_bar_stable_fab_location.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/features/settings/app_settings.dart';
 import 'package:blood_pressure_app/features/settings/registry.dart';
 import 'package:blood_pressure_app/features/settings/tiles/number_input_list_tile.dart';
@@ -58,10 +59,9 @@ class ConfigureWarnValuesScreen extends ConsumerWidget {
                   if (await canLaunchUrl(url)) {
                     await launchUrl(url, mode: LaunchMode.externalApplication);
                   } else if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('errCantOpenURL'.tr(namedArgs: {
-                        'url': BloodPressureWarnValues.source,
-                      })),),);
+                    context.showError('errCantOpenURL'.tr(namedArgs: {
+                      'url': BloodPressureWarnValues.source,
+                    }));
                   }
                 },
                 child: SizedBox(

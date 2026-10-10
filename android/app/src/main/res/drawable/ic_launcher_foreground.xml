@@ -5,8 +5,8 @@
     android:viewportWidth="1024"
     android:viewportHeight="1024">
     <group
-        android:translateX="500"
-        android:translateY="548">
+        android:translateX="512"
+        android:translateY="511.75">
         <group
             android:scaleX="0.7"
             android:scaleY="0.7">

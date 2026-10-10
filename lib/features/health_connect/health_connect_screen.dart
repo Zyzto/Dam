@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/features/health_connect/bp_sync_model.dart';
 import 'package:blood_pressure_app/features/health_connect/sync_model.dart';
 import 'package:blood_pressure_app/features/health_connect/sync_tile.dart';
@@ -116,17 +117,13 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen> {
     try {
       final granted = await _health.requestPermissionsIfMissing(types);
       if (!granted && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('noPermissions'.tr())));
+        context.showError('noPermissions'.tr());
       }
       await _checkPermissions();
       return granted;
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('noPermissions'.tr())));
+        context.showError('noPermissions'.tr());
       }
       await _checkPermissions();
       return false;

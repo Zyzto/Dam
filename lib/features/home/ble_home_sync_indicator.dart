@@ -54,6 +54,7 @@ class BleHomeSyncIndicator extends ConsumerWidget {
         child: Tooltip(
           message: tooltip,
           child: CompositedTransformTarget(
+            key: view.indicatorKey,
             link: view.indicatorLink,
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 56, minHeight: 56),

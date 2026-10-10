@@ -587,10 +587,9 @@ packages:
   flutter_settings_framework:
     dependency: "direct main"
     description:
-      name: flutter_settings_framework
-      sha256: "8c723f565faf7c83ec730f73492418db56f3282963b5a53af9062feadf863488"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../edadat"
+      relative: true
+    source: path
     version: "0.9.0"
   flutter_test:
     dependency: "direct dev"
@@ -1151,10 +1150,9 @@ packages:
   safaeh:
     dependency: "direct main"
     description:
-      name: safaeh
-      sha256: "4ff4400bc57f6750f228e9f7b56a3a0947607553f172a3ea23d8659690383ebf"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../Safaeh"
+      relative: true
+    source: path
     version: "0.8.2"
   share_plus:
     dependency: "direct main"
@@ -1490,7 +1488,7 @@ packages:
     source: hosted
     version: "0.11.1"
   toastification:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: toastification
       sha256: "66c96678e3dece8ba24de3ea31634bd65a80aaecb8105f9bafe946e5f0d7590a"

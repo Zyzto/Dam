@@ -484,7 +484,7 @@ class MedicineIntakeFormState
                 Expanded(
                   child: _DoseStepper(
                     controller: slot.controller,
-                    unit: selected.unit.symbol,
+                    unit: selected.unit.localizedSymbol,
                     errorText: slot.error,
                     onMinus: () => _nudge(slot, -1),
                     onPlus: () => _nudge(slot, 1),

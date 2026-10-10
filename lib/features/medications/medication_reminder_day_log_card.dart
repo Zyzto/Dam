@@ -40,7 +40,7 @@ class _DayLogCard extends StatelessWidget {
         shifted.isAfter(now) &&
         !_sameClockMinute(shifted, occurrence.scheduledAt);
     final time = dueNow
-        ? _t('reminderDueNow', 'Due now')
+        ? _t('reminderDueNow', 'Due')
         : localizations.formatTimeOfDay(
             TimeOfDay.fromDateTime(
               movedAhead ? shifted : occurrence.scheduledAt,

@@ -21,6 +21,9 @@ void main() {
       expect(locale, containsPair('pdfExportUnit', isNotNull));
       expect(locale, containsPair('pdfLatestReading', isNotNull));
       expect(locale['pdfExportUnit'], contains('{unit}'));
+      expect(locale['pdfMedicineOfDays'], contains('{total}'));
+      expect(locale['pdfWeightSince'], contains('{date}'));
+      expect(locale['pdfWeightFrom'], contains('{value}'));
       expect(
         locale['pdfLatestReading'],
         allOf(
@@ -56,6 +59,9 @@ const _pdfKeys = [
   'time',
   'pdfExportUnit',
   'pdfLatestReading',
+  'pdfMedicineOfDays',
+  'pdfWeightSince',
+  'pdfWeightFrom',
   'dashboardAverages',
   'errNoData',
 ];

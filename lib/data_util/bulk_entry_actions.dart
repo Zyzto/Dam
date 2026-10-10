@@ -2,6 +2,7 @@ import 'package:blood_pressure_app/components/color_picker.dart';
 import 'package:blood_pressure_app/components/confirm_deletion_dialog.dart';
 import 'package:blood_pressure_app/components/input_dialog.dart';
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/domain/domain.dart';
 import 'package:blood_pressure_app/features/bluetooth/logic/ble_measurement_duplicates.dart';
 import 'package:blood_pressure_app/features/settings/app_settings.dart';
@@ -198,22 +199,19 @@ extension BulkEntryUtils on BuildContext {
         }
       }
       if (!mounted) return true;
-      final messenger = ScaffoldMessenger.of(this);
-      messenger.removeCurrentSnackBar();
-      messenger.showSnackBar(SnackBar(
-        content: Text('deletionConfirmed'.tr()),
-        action: SnackBarAction(
-          label: 'btnUndo'.tr(),
-          onPressed: () async {
-            for (final record in list) {
-              await repo.add(record);
-            }
-            for (final key in blocked) {
-              await blacklistRepo.remove('weight', key);
-            }
-          },
-        ),
-      ));
+      dismissAllToasts();
+      showToastWithAction(
+        'deletionConfirmed'.tr(),
+        actionLabel: 'btnUndo'.tr(),
+        onAction: () async {
+          for (final record in list) {
+            await repo.add(record);
+          }
+          for (final key in blocked) {
+            await blacklistRepo.remove('weight', key);
+          }
+        },
+      );
       return true;
     } on StateError {
       Log.severe('deleteWeights called without repositories');
@@ -293,45 +291,40 @@ extension BulkEntryUtils on BuildContext {
   }
 
   void _showDeleted(List<CombinedEntry> entries, {required bool blacklist}) {
-    final messenger = ScaffoldMessenger.of(this);
-    messenger.removeCurrentSnackBar();
-    messenger.showSnackBar(SnackBar(
-      content: Text('deletionConfirmed'.tr()),
-      action: SnackBarAction(
-        label: 'btnUndo'.tr(),
-        onPressed: () async {
-          for (final entry in entries) {
-            if (entry.record != null) await bpRepo.add(entry.record!);
-            if (entry.note != null) await noteRepo.add(entry.note!);
-            for (final intake in entry.allIntakes) {
-              if (!_sameMinute(intake.time, entry.time)) continue;
-              await intakeRepo.add(intake);
+    dismissAllToasts();
+    showToastWithAction(
+      'deletionConfirmed'.tr(),
+      actionLabel: 'btnUndo'.tr(),
+      onAction: () async {
+        for (final entry in entries) {
+          if (entry.record != null) await bpRepo.add(entry.record!);
+          if (entry.note != null) await noteRepo.add(entry.note!);
+          for (final intake in entry.allIntakes) {
+            if (!_sameMinute(intake.time, entry.time)) continue;
+            await intakeRepo.add(intake);
+          }
+          if (entry.weight != null) await weightRepo.add(entry.weight!);
+          if (blacklist) {
+            if (entry.record != null) {
+              await blacklistRepo.remove(
+                'bp',
+                bloodPressureRecordKey(entry.record!),
+              );
             }
-            if (entry.weight != null) await weightRepo.add(entry.weight!);
-            if (blacklist) {
-              if (entry.record != null) {
-                await blacklistRepo.remove(
-                  'bp',
-                  bloodPressureRecordKey(entry.record!),
-                );
-              }
-              if (entry.weight != null) {
-                await blacklistRepo.remove(
-                  'weight',
-                  bodyweightRecordKey(entry.weight!),
-                );
-              }
+            if (entry.weight != null) {
+              await blacklistRepo.remove(
+                'weight',
+                bodyweightRecordKey(entry.weight!),
+              );
             }
           }
-        },
-      ),
-    ));
+        }
+      },
+    );
   }
 
   void _showUpdated() {
-    ScaffoldMessenger.of(this).showSnackBar(
-      SnackBar(content: Text('entriesUpdated'.tr())),
-    );
+    showSuccess('entriesUpdated'.tr());
   }
 }
 

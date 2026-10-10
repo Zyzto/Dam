@@ -77,7 +77,7 @@ void main() {
       tester.getRect(unitDropdown).center.dx,
       lessThan(doseRect.center.dx),
     );
-    expect(find.text('ملغ'), findsOneWidget);
+    expect(find.text('مغ'), findsOneWidget);
 
     await tester.tap(unitDropdown);
     await tester.pumpAndSettle();

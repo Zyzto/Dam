@@ -63,6 +63,21 @@ void main() {
     expect(pdf.length, pdf2.length);
   });
 
+  test('separate weight and medicine tables are the default', () async {
+    final pdfSettings = PdfExportSettings();
+    expect(pdfSettings.separateWeightMedicineTables, isTrue);
+    final converter = PdfConverter(
+      pdfSettings,
+      AppSettings.fromController(testSettingsController!),
+      ExportColumnsManager(),
+      ExportSettings(),
+    );
+    final split = await converter.create(createRecords());
+    pdfSettings.separateWeightMedicineTables = false;
+    final mixed = await converter.create(createRecords());
+    expect(split.length, isNot(mixed.length));
+  });
+
   test('generated data should change on settings change', () async {
     final pdfSettings = PdfExportSettings(
       exportData: true,

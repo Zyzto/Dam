@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:blood_pressure_app/core/database/db_import.dart';
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/features/export_import/model/csv_converter.dart';
 import 'package:blood_pressure_app/features/export_import/model/csv_record_parsing_actor.dart';
 import 'package:blood_pressure_app/features/export_import/ui/import_preview_dialog.dart';
@@ -21,12 +22,12 @@ class ImportButton extends StatelessWidget {
     label: Text('import'.tr()),
     icon: Icon(Icons.file_upload_outlined),
     onPressed: () async {
-      final messenger = ScaffoldMessenger.of(context);
       final exportSettings = context.exportSettings;
 
       final file = await FilePicker.pickFile();
+      if (!context.mounted) return;
       if (file == null) {
-        messenger.showSnackBar(SnackBar(content: Text('errNoFileOpened'.tr())));
+        context.showError('errNoFileOpened'.tr());
         return;
       }
       if (!context.mounted) return;
@@ -68,7 +69,8 @@ class ImportButton extends StatelessWidget {
             if (e.weight != null) await weightRepo.add(e.weight!);
             if (e.intake != null) await intakeRepo.add(e.intake!);
           });
-          messenger.showSnackBar(SnackBar(content: Text('importSuccess'.tr(namedArgs: {'count': '${importedRecords.length}'}))));
+          if (!context.mounted) return;
+          context.showSuccess('importSuccess'.tr(namedArgs: {'count': '${importedRecords.length}'}));
           break;
         case 'db':
           if (file.path == null) return;
@@ -85,10 +87,11 @@ class ImportButton extends StatelessWidget {
           } catch (e) {
             // DB doesn't conform
           }
-          messenger.showSnackBar(SnackBar(content: Text('importSuccess'.tr(namedArgs: {'count': '$count'}))));
+          if (!context.mounted) return;
+          context.showSuccess('importSuccess'.tr(namedArgs: {'count': '$count'}));
           break;
         default:
-          messenger.showSnackBar(SnackBar(content: Text('errWrongImportFormat'.tr())));
+          context.showError('errWrongImportFormat'.tr());
       }
     },
   );

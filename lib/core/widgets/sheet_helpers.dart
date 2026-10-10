@@ -1,4 +1,6 @@
 import 'package:blood_pressure_app/core/layout/responsive_sheet.dart';
+import 'package:blood_pressure_app/core/widgets/sheet_option_tile.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:safaeh/safaeh.dart';
 
@@ -9,6 +11,7 @@ class SheetPickerOption<T> {
     required this.label,
     this.subtitle,
     this.leading,
+    this.trailing,
     this.enabled = true,
   });
 
@@ -16,8 +19,12 @@ class SheetPickerOption<T> {
   final String label;
   final String? subtitle;
   final Widget? leading;
+  final Widget? trailing;
   final bool enabled;
 }
+
+/// One row for [showActionSheet].
+typedef SheetAction<T> = SafaehAction<T>;
 
 /// Shows a single-select list using the same adaptive modal as other sheets.
 Future<T?> showOptionPickerSheet<T>(
@@ -27,27 +34,96 @@ Future<T?> showOptionPickerSheet<T>(
   T? selected,
   double? maxHeight,
   bool centerInFullViewport = true,
-}) =>
-    showResponsiveSheet<T>(
-      context: context,
-      title: title,
-      maxHeight: maxHeight,
-      centerInFullViewport: centerInFullViewport,
-      child: SafaehTilePickerBody<T>(
-        showTitleInBody: false,
-        options: [
-          for (final option in options)
-            SafaehTileOption<T>(
-              value: option.value,
-              label: option.label,
-              subtitle: option.subtitle,
-              leading: option.leading,
-              enabled: option.enabled,
-            ),
-        ],
-        selected: selected,
+  Widget? header,
+}) {
+  final trailingByValue = {
+    for (final option in options) option.value: option.trailing,
+  };
+  return showResponsiveSheet<T>(
+    context: context,
+    title: title,
+    maxHeight: maxHeight ?? MediaQuery.sizeOf(context).height * 0.75,
+    centerInFullViewport: centerInFullViewport,
+    child: SafaehTilePickerBody<T>(
+      showTitleInBody: false,
+      header: header,
+      options: [
+        for (final option in options)
+          SafaehTileOption<T>(
+            value: option.value,
+            label: option.label,
+            subtitle: option.subtitle,
+            leading: option.leading,
+            enabled: option.enabled,
+          ),
+      ],
+      selected: selected,
+      tileBuilder: (ctx, option, isSelected) => SheetOptionTile(
+        title: option.label,
+        subtitle: option.subtitle,
+        leading: option.leading,
+        trailing: trailingByValue[option.value],
+        enabled: option.enabled,
+        selected: isSelected,
+        onTap: null,
       ),
-    );
+    ),
+  );
+}
+
+/// Action menu. Returns the selected action value, or null if dismissed.
+///
+/// Rows use the same bordered tiles as [showOptionPickerSheet].
+Future<T?> showActionSheet<T>(
+  BuildContext context, {
+  required String title,
+  required List<SheetAction<T>> actions,
+  bool centerInFullViewport = true,
+  Widget? header,
+  double? maxHeight,
+}) => showResponsiveSheet<T>(
+  context: context,
+  title: title,
+  maxHeight: maxHeight ?? MediaQuery.sizeOf(context).height * 0.75,
+  centerInFullViewport: centerInFullViewport,
+  child: SafaehActionSheetBody<T>(
+    header: header,
+    actions: actions,
+    tileBuilder: (sheetContext, action) => SheetOptionTile(
+      title: action.label,
+      subtitle: action.subtitle,
+      leading: action.leading,
+      trailing: action.trailing,
+      selected: action.selected,
+      destructive: action.destructive,
+      enabled: action.enabled,
+      onTap: null,
+    ),
+  ),
+);
+
+/// Footer actions for a responsive sheet.
+///
+/// Phone sheets include a cancel button. Wide dialogs omit it: the title-bar
+/// close button and the barrier already dismiss.
+List<Widget> responsiveSheetActions(
+  BuildContext context, {
+  required List<Widget> actions,
+  VoidCallback? onCancel,
+  String? cancelLabel,
+  bool includeCancel = true,
+}) {
+  final showCancel = includeCancel && !isWideModal(context);
+  return [
+    if (showCancel)
+      TextButton(
+        key: const ValueKey('safaeh_cancel'),
+        onPressed: onCancel ?? () => Navigator.pop(context),
+        child: Text(cancelLabel ?? 'btnCancel'.tr()),
+      ),
+    ...actions,
+  ];
+}
 
 /// Builds a consistent sheet body with a title and an action row.
 Widget buildSheetShell(

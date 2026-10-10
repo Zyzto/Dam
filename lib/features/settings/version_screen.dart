@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/data_util/consistent_future_builder.dart';
 import 'package:blood_pressure_app/logging.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -88,8 +89,7 @@ class _VersionScreenState extends State<VersionScreen> with Loggable {
                     );
                   } catch(e) {
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('ERR: $e'),),);
+                    context.showError('ERR: $e');
                   }
                 },
                 title: const Text('rescue legacy db'),

@@ -1,4 +1,5 @@
 import 'package:blood_pressure_app/core/layout/responsive_sheet.dart';
+import 'package:blood_pressure_app/core/widgets/sheet_helpers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -77,20 +78,21 @@ class _InputDialogState extends State<InputDialog> {
           ),
           onSubmitted: _onSubmit,
         ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('btnCancel'.tr()),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: () => _onSubmit(controller.text),
-              child: Text('btnConfirm'.tr()),
-            ),
-          ],
+        const SizedBox(height: 20),
+        OverflowBar(
+          alignment: MainAxisAlignment.end,
+          spacing: 8,
+          overflowAlignment: OverflowBarAlignment.end,
+          overflowSpacing: 8,
+          children: responsiveSheetActions(
+            context,
+            actions: [
+              FilledButton(
+                onPressed: () => _onSubmit(controller.text),
+                child: Text('btnConfirm'.tr()),
+              ),
+            ],
+          ),
         ),
       ],
     );

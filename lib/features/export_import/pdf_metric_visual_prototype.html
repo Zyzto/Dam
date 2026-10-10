@@ -1,0 +1,370 @@
+<!--
+Ten medicine visuals and ten weight visuals for the Janan letter PDF.
+Question: how should doses and weigh-ins be drawn, instead of a line of the amount?
+Switch medicine with left/right. Switch weight with up/down.
+?medicine=calendar&weight=line
+Throwaway prototype. Not the export.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Janan medicine and weight visuals</title>
+<style>
+  :root { --desk: #2c2c2c; --ink: #1a1a1a; --muted: #5c6562; --teal: #009688; --line: #e4e4e4; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--desk); color: #f3f3f3; font-family: "Segoe UI", system-ui, sans-serif; }
+  #chrome { position: sticky; top: 0; z-index: 2; padding: 14px 22px 12px; background: rgba(44,44,44,.94); }
+  #chrome p { margin: 0; max-width: 78ch; font-size: 14px; line-height: 1.45; color: #dedede; }
+  #chrome small { display: block; margin-top: 4px; color: #9a9a9a; }
+  #stage-wrap { display: flex; justify-content: center; padding: 12px 12px 120px; }
+  #stage { transform-origin: top center; }
+  .sheet {
+    width: 210mm; background: white; color: var(--ink);
+    padding: 14mm 16mm 16mm; box-shadow: 0 18px 50px rgba(0,0,0,.35);
+  }
+  .sheet header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.4px solid var(--teal); padding-bottom: 6px; margin-bottom: 10px; }
+  .sheet header b { letter-spacing: .14em; text-transform: uppercase; font-size: 11px; }
+  .sheet header span { color: var(--muted); font-size: 12px; }
+  .sheet h1 { margin: 0 0 14px; font-size: 16px; font-weight: 650; }
+  .block { margin-top: 18px; }
+  .block h2 { margin: 0 0 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+  .name { margin: 8px 0 4px; font-size: 13px; }
+  .quiet { color: var(--muted); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 650; padding: 0 4px 4px 0; }
+  td { padding: 3px 4px 3px 0; border-top: 1px solid var(--line); vertical-align: baseline; }
+  svg { width: 100%; height: auto; display: block; }
+  .weeks { display: flex; flex-direction: column; gap: 8px; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cell { min-height: 28px; }
+  .cell .d { font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 3px; }
+  .amt { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .checks { margin: 0; padding: 0; list-style: none; font-size: 12px; }
+  .checks li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+  .punch { display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; }
+  .punch i { display: flex; flex-direction: column; align-items: center; gap: 3px; font-style: normal; font-size: 8px; color: var(--muted); min-height: 28px; border-top: 1px solid #111; padding-top: 2px; }
+  .punch b { width: 8px; height: 8px; border-radius: 50%; background: #ddd; }
+  .punch b.on { background: var(--teal); }
+  .punch b.alt { background: #3f51b5; }
+  .diary .day { display: grid; grid-template-columns: 28mm 1fr; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); font-size: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chips span { border: 1px solid #ccc; border-radius: 99px; padding: 2px 7px; font-size: 11px; }
+  .tally { display: flex; gap: 14px; align-items: baseline; }
+  .tally strong { font-size: 28px; letter-spacing: -.03em; }
+  .binary { display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; margin-top: 6px; }
+  .binary i { height: 8px; background: #ececec; }
+  .binary i.on { background: var(--teal); }
+  .binary i.alt { background: #3f51b5; }
+  .hero { display: flex; justify-content: space-between; align-items: flex-end; }
+  .hero strong { font-size: 42px; letter-spacing: -.04em; line-height: .9; }
+  .hero em { font-style: normal; color: var(--muted); }
+  .slope { display: grid; grid-template-columns: 1fr 46mm; gap: 12px; align-items: end; }
+  .slope strong { font-size: 36px; letter-spacing: -.04em; }
+  .spark { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .spark svg { width: 70mm; height: 16mm; }
+  #switcher {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    z-index: 5; display: flex; align-items: center; gap: 8px;
+    padding: 6px; background: #f4f4f4; color: #111; border-radius: 999px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.35);
+  }
+  #switcher button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: #111; color: white; font-size: 16px; cursor: pointer; }
+  #groups { display: flex; flex-direction: column; gap: 2px; min-width: 280px; }
+  #groups button.pick { width: auto; height: auto; border-radius: 999px; background: transparent; color: #666; font-size: 13px; font-weight: 650; padding: 3px 10px; text-align: left; }
+  #groups button.pick.active { background: #111; color: white; }
+</style>
+</head>
+<body>
+  <div id="chrome"><p id="thesis"></p></div>
+  <div id="stage-wrap"><div id="stage"></div></div>
+  <nav id="switcher" aria-label="Visual options">
+    <button id="prev" type="button" aria-label="Previous option">←</button>
+    <div id="groups"></div>
+    <button id="next" type="button" aria-label="Next option">→</button>
+  </nav>
+<script>
+const DAYS = [];
+for (let day = new Date(2026, 8, 25); day <= new Date(2026, 9, 8); day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1)) {
+  DAYS.push(new Date(day));
+}
+const MEDS = [
+  { name: "Amlodipine", unit: "mg", color: "#009688", doses: [
+    ["2026-09-25", 7.5, 5], ["2026-09-26", 7.5, 5], ["2026-09-28", 7.7, 5],
+    ["2026-10-01", 7.7, 5], ["2026-10-04", 8.1, 5], ["2026-10-08", 7.7, 5],
+  ]},
+  { name: "Lisinopril", unit: "mg", color: "#3f51b5", doses: [
+    ["2026-09-29", 8, 10], ["2026-10-02", 7.6, 10], ["2026-10-05", 19.7, 10], ["2026-10-07", 21.2, 5],
+  ]},
+];
+const WEIGHTS = [
+  ["2026-09-25", 72.0], ["2026-09-27", 71.6], ["2026-09-29", 71.4],
+  ["2026-10-01", 71.2], ["2026-10-03", 71.0], ["2026-10-06", 70.8], ["2026-10-08", 70.6],
+];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function parse(iso) { const [y,m,d] = iso.split("-").map(Number); return new Date(y, m - 1, d); }
+function key(date) { return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`; }
+function label(date, previous) {
+  const showMonth = !previous || previous.getMonth() !== date.getMonth();
+  return showMonth ? `${date.getDate()}/${date.getMonth() + 1}` : `${date.getDate()}`;
+}
+function long(iso) { const date = parse(iso); return `${date.getDate()} ${MONTHS[date.getMonth()]}`; }
+function longDate(date) { return `${date.getDate()} ${MONTHS[date.getMonth()]}`; }
+function clock(hour) {
+  const h = Math.floor(hour);
+  const m = Math.round((hour - h) * 60);
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+}
+function dosesOn(med, date) { return med.doses.filter((dose) => key(parse(dose[0])) === key(date)); }
+function steady(med) { return new Set(med.doses.map((dose) => dose[2])).size <= 1; }
+
+function calendar(med) {
+  const weeks = [];
+  for (let i = 0; i < DAYS.length; i += 7) weeks.push(DAYS.slice(i, i + 7));
+  const same = steady(med);
+  return `<div class="name">${med.name}${same ? ` · ${med.doses[0][2]} ${med.unit}` : ` · ${med.unit}`}</div>
+    <div class="weeks">${weeks.map((week) => `<div class="week">${week.map((day, index) => {
+      const found = dosesOn(med, day);
+      const mark = !found.length ? "" : same
+        ? `<i class="dot" style="background:${med.color}"></i>`
+        : found.map((dose) => `<div class="amt" style="color:${med.color}">${dose[2]}</div>`).join("");
+      return `<div class="cell"><div class="d">${label(day, index ? week[index - 1] : null)}</div>${mark}</div>`;
+    }).join("")}</div>`).join("")}</div>`;
+}
+function checklist(med) {
+  const items = med.doses.map((dose) => `<li><span>${long(dose[0])} ${clock(dose[1])}</span><b>${dose[2]} ${med.unit}</b></li>`).join("");
+  return `<div class="name">${med.name}</div><ul class="checks">${items}</ul>`;
+}
+function punch(med) {
+  const cells = DAYS.map((day) => {
+    const on = dosesOn(med, day).length ? "on" : "";
+    return `<i>${day.getDate()}<b class="${on}" style="${on ? `background:${med.color}` : ""}"></b></i>`;
+  }).join("");
+  const amount = steady(med) ? `${med.doses[0][2]} ${med.unit}` : med.unit;
+  return `<div class="name">${med.name} · ${amount}</div><div class="punch">${cells}</div>`;
+}
+function ticks(med) {
+  const w = 640, h = 70, left = 8, right = 8;
+  const x = (iso) => left + (DAYS.findIndex((day) => key(day) === key(parse(iso))) / (DAYS.length - 1)) * (w - left - right);
+  const marks = med.doses.map((dose) => {
+    const y = 12 + (dose[1] / 24) * 40;
+    return `<line x1="${x(dose[0])}" y1="8" x2="${x(dose[0])}" y2="${y}" stroke="${med.color}" stroke-width="1.4"/>
+      <circle cx="${x(dose[0])}" cy="${y}" r="3" fill="${med.color}"/>`;
+  }).join("");
+  const axis = [0, 7, 13].map((index) => `<text x="${left + (index / 13) * (w - left - right)}" y="66" text-anchor="middle" font-size="9" fill="#5c6562">${label(DAYS[index])}</text>`).join("");
+  return `<div class="name">${med.name} · higher mark, later in the day</div><svg viewBox="0 0 ${w} ${h}">${marks}${axis}</svg>`;
+}
+function diary() {
+  const rows = DAYS.filter((day) => MEDS.some((med) => dosesOn(med, day).length)).map((day) => {
+    const lines = MEDS.flatMap((med) => dosesOn(med, day).map((dose) => `${med.name} ${dose[2]} ${med.unit} · ${clock(dose[1])}`));
+    return `<div class="day"><div class="quiet">${longDate(day)}</div><div>${lines.join("<br>")}</div></div>`;
+  }).join("");
+  return `<div class="diary">${rows}</div>`;
+}
+function grid() {
+  const head = DAYS.map((day) => `<th>${day.getDate()}</th>`).join("");
+  const rows = MEDS.map((med) => {
+    const cells = DAYS.map((day) => {
+      const found = dosesOn(med, day);
+      return `<td>${found.map((dose) => dose[2]).join("<br>")}</td>`;
+    }).join("");
+    return `<tr><th>${med.name}</th>${cells}</tr>`;
+  }).join("");
+  return `<table><thead><tr><th></th>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+function tally(med) {
+  const squares = DAYS.map((day) => `<i class="${dosesOn(med, day).length ? "on" : ""}" style="${dosesOn(med, day).length ? `background:${med.color}` : ""}"></i>`).join("");
+  const amount = steady(med) ? `${med.doses[0][2]} ${med.unit}` : med.unit;
+  return `<div class="tally"><strong>${med.doses.length}</strong><span class="quiet">of ${DAYS.length} days · ${med.name} ${amount}</span></div><div class="binary">${squares}</div>`;
+}
+function log() {
+  const rows = MEDS.flatMap((med) => med.doses.map((dose) => ({ med, dose })))
+    .sort((a, b) => a.dose[0].localeCompare(b.dose[0]) || a.dose[1] - b.dose[1]);
+  return `<table><thead><tr><th>When</th><th>Medicine</th><th>Dose</th></tr></thead><tbody>${
+    rows.map(({ med, dose }) => `<tr><td>${long(dose[0])} ${clock(dose[1])}</td><td>${med.name}</td><td>${dose[2]} ${med.unit}</td></tr>`).join("")
+  }</tbody></table>`;
+}
+function chips(med) {
+  const items = med.doses.map((dose) => `<span>${long(dose[0])} · ${dose[2]} ${med.unit}</span>`).join("");
+  return `<div class="name">${med.name}</div><div class="chips">${items}</div>`;
+}
+function dailyCount() {
+  const w = 640, h = 90, base = 68;
+  const bars = DAYS.map((day, index) => {
+    const stack = MEDS.map((med) => ({ med, n: dosesOn(med, day).length })).filter((item) => item.n);
+    let y = base;
+    return stack.map((item) => {
+      y -= 16;
+      const x = 16 + index * ((w - 32) / DAYS.length);
+      return `<rect x="${x}" y="${y}" width="12" height="14" fill="${item.med.color}"/>`;
+    }).join("");
+  }).join("");
+  return `<svg viewBox="0 0 ${w} ${h}">${bars}<text x="16" y="84" font-size="9" fill="#5c6562">25 Sep</text><text x="${w - 16}" y="84" text-anchor="end" font-size="9" fill="#5c6562">8 Oct</text></svg>
+    <p class="quiet">One block per dose that day. Teal is Amlodipine, blue is Lisinopril.</p>`;
+}
+
+function weightSvg({ connect, step, dots, bars }) {
+  const w = 640, h = 120, left = 28, right = 8, top = 12, bottom = 22;
+  const values = WEIGHTS.map((row) => row[1]);
+  const min = 70, max = 72.6;
+  const x = (iso) => left + (DAYS.findIndex((day) => key(day) === key(parse(iso))) / (DAYS.length - 1)) * (w - left - right);
+  const y = (value) => top + (1 - (value - min) / (max - min)) * (h - top - bottom);
+  let path = "";
+  if (connect) path = WEIGHTS.map((row, i) => `${i ? "L" : "M"}${x(row[0])},${y(row[1])}`).join(" ");
+  if (step) {
+    path = WEIGHTS.map((row, i) => `${i ? "L" : "M"}${x(row[0])},${y(row[1])}`).join(" ");
+    for (let i = 0; i < WEIGHTS.length - 1; i++) path += ` L${x(WEIGHTS[i + 1][0])},${y(WEIGHTS[i][1])}`;
+  }
+  const points = dots || connect || step ? WEIGHTS.map((row) => `<circle cx="${x(row[0])}" cy="${y(row[1])}" r="3" fill="#263238"/>`).join("") : "";
+  const columns = bars ? WEIGHTS.map((row) => `<rect x="${x(row[0]) - 5}" y="${y(row[1])}" width="10" height="${baseY() - y(row[1])}" fill="#263238"/>`).join("") : "";
+  function baseY() { return y(min); }
+  const guides = [70, 71, 72].map((value) => `<line x1="${left}" y1="${y(value)}" x2="${w - right}" y2="${y(value)}" stroke="#eee"/><text x="${left - 4}" y="${y(value) + 3}" text-anchor="end" font-size="9" fill="#5c6562">${value}</text>`).join("");
+  const axis = `<text x="${x(WEIGHTS[0][0])}" y="${h - 4}" font-size="9" fill="#5c6562">25 Sep</text><text x="${x(WEIGHTS.at(-1)[0])}" y="${h - 4}" text-anchor="end" font-size="9" fill="#5c6562">8 Oct</text>`;
+  return `<svg viewBox="0 0 ${w} ${h}">${guides}${path ? `<path d="${path}" fill="none" stroke="#263238" stroke-width="1.8"/>` : ""}${columns}${points}${axis}</svg>`;
+}
+function weightLine() { return weightSvg({ connect: true, dots: true }); }
+function weightDots() { return weightSvg({ dots: true }); }
+function weightStep() { return weightSvg({ step: true, dots: true }); }
+function weightLatest() {
+  return `<div class="hero"><div><div class="quiet">Latest · 8 Oct</div><strong>70.6</strong><div class="quiet">kg</div></div><div><div class="quiet">Since 25 Sep</div><strong style="font-size:28px">−1.4 kg</strong><div class="quiet">from 72.0</div></div></div>`;
+}
+function weightBars() { return weightSvg({ bars: true }); }
+function weightTable() {
+  return `<table><thead><tr><th>Date</th><th>kg</th><th></th></tr></thead><tbody>${
+    [...WEIGHTS].reverse().map((row, index, all) => {
+      const previous = all[index + 1];
+      const delta = previous ? (row[1] - previous[1]).toFixed(1) : "";
+      return `<tr><td>${long(row[0])}</td><td>${row[1].toFixed(1)}</td><td class="quiet">${delta && delta > 0 ? "+" : ""}${delta}</td></tr>`;
+    }).join("")
+  }</tbody></table>`;
+}
+function weightRange() {
+  const min = 70.6, max = 72.0, latest = 70.6;
+  const pos = (value) => ((value - 70.2) / (72.4 - 70.2)) * 100;
+  return `<div style="position:relative;height:46px;margin-top:18px">
+    <div style="position:absolute;left:${pos(min)}%;right:${100 - pos(max)}%;top:16px;height:8px;background:#263238;border-radius:4px"></div>
+    <div style="position:absolute;left:${pos(latest)}%;top:8px;width:2px;height:24px;background:#009688"></div>
+    <div class="quiet" style="position:absolute;left:${pos(min)}%;top:28px">${min} latest</div>
+    <div class="quiet" style="position:absolute;left:${pos(max)}%;top:0">${max} first</div>
+  </div>`;
+}
+function weightWeeks() {
+  const weeks = [
+    ["25 Sep – 1 Oct", [72.0, 71.6, 71.4, 71.2]],
+    ["2 Oct – 8 Oct", [71.0, 70.8, 70.6]],
+  ];
+  return weeks.map(([title, values]) => {
+    const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const width = ((avg - 70) / 2.6) * 100;
+    return `<div class="name">${title}<span class="quiet"> · ${avg.toFixed(1)} kg</span></div>
+      <div style="height:10px;background:#ececec"><div style="height:10px;width:${width}%;background:#263238"></div></div>`;
+  }).join("");
+}
+function weightSlope() {
+  return `<div class="slope"><div><div class="quiet">13 days</div><strong>−1.4 kg</strong><div class="quiet">72.0 → 70.6 · about 0.1 kg a day</div></div>
+    <svg viewBox="0 0 160 70"><line x1="8" y1="14" x2="150" y2="58" stroke="#263238" stroke-width="2"/><circle cx="8" cy="14" r="3" fill="#263238"/><circle cx="150" cy="58" r="3" fill="#009688"/></svg></div>`;
+}
+function weightSpark() {
+  const spark = weightSvg({ connect: true, dots: true }).replace('viewBox="0 0 640 120"', 'viewBox="0 0 640 120" preserveAspectRatio="none"');
+  return `<div class="spark"><span>72.0 kg down to <b>70.6 kg</b></span>${spark}</div>`;
+}
+
+const MEDICINE = [
+  ["calendar", "Calendar", "A mark on each day in the report. The amount shows only when it changes.", () => MEDS.map(calendar).join("")],
+  ["checklist", "Checklist", "Only the days a dose was taken, with the time.", () => MEDS.map(checklist).join("")],
+  ["punch", "Punch card", "Fourteen days in a row. Filled means taken. The dose stays in the label.", () => MEDS.map(punch).join("")],
+  ["clock", "Day clock", "A tick on the day, and how high it sits shows how late in the day it was taken.", () => MEDS.map(ticks).join("")],
+  ["diary", "Diary", "Days down the page. A day with no dose is left out.", diary],
+  ["grid", "Grid", "Medicines down, days across, the amount in the cell.", grid],
+  ["tally", "Tally", "How many days out of the report, then a square for every day.", () => MEDS.map(tally).join("")],
+  ["log", "Log", "One list in time order. No picture.", log],
+  ["chips", "Chips", "A chip for each dose. Missed days are simply absent.", () => MEDS.map(chips).join("")],
+  ["count", "Daily count", "How many doses landed on each day, not how many milligrams.", dailyCount],
+];
+const WEIGHT = [
+  ["line", "Line", "Weigh-ins joined. The gaps between them are drawn as if weight changed smoothly.", weightLine],
+  ["dots", "Dots", "Only the days someone stepped on the scale. Nothing is invented in between.", weightDots],
+  ["step", "Step", "The last weight holds until the next weigh-in.", weightStep],
+  ["latest", "Latest", "The number that matters, and how far it has moved since the first.", weightLatest],
+  ["bars", "Bars", "One bar per weigh-in, sitting on its date.", weightBars],
+  ["table", "Table", "Date, kilograms, and the change from the previous weigh-in.", weightTable],
+  ["range", "Range", "First to latest as a single span. No path.", weightRange],
+  ["weeks", "Weeks", "One average per week, so a single weigh-in cannot dominate.", weightWeeks],
+  ["slope", "Slope", "The change over the whole report, not each reading.", weightSlope],
+  ["spark", "Sparkline", "The sentence carries the numbers. The line is only a hint.", weightSpark],
+];
+
+const stage = document.getElementById("stage");
+const thesis = document.getElementById("thesis");
+const groups = document.getElementById("groups");
+let active = "medicine";
+
+function params() { return new URLSearchParams(location.search); }
+function indexOf(list, id) {
+  const found = list.findIndex((item) => item[0] === id);
+  return found < 0 ? 0 : found;
+}
+function show() {
+  const query = params();
+  const medicine = MEDICINE[indexOf(MEDICINE, query.get("medicine"))];
+  const weight = WEIGHT[indexOf(WEIGHT, query.get("weight"))];
+  stage.innerHTML = `<article class="sheet">
+    <header><b>Janan</b><span>25 Sep – 8 Oct</span></header>
+    <h1>Where the two blocks sit on the letter</h1>
+    <section class="block"><h2>Medicine intakes</h2>${medicine[3]()}</section>
+    <section class="block"><h2>Weight</h2>${weight[3]()}</section>
+  </article>`;
+  thesis.innerHTML = `<strong>Medicine · ${medicine[1]}.</strong> ${medicine[2]}<br><strong>Weight · ${weight[1]}.</strong> ${weight[2]}<small>Left and right move the selected row. Up and down switch row. ${medicine[0]} / ${weight[0]}</small>`;
+  groups.innerHTML = [
+    ["medicine", "Medicine", medicine],
+    ["weight", "Weight", weight],
+  ].map(([id, label, item]) => {
+    const at = (id === "medicine" ? MEDICINE : WEIGHT).indexOf(item) + 1;
+    return `<button class="pick${active === id ? " active" : ""}" type="button" data-group="${id}">${label} ${at}/10 · ${item[1]}</button>`;
+  }).join("");
+  const url = new URL(location.href);
+  url.searchParams.set("medicine", medicine[0]);
+  url.searchParams.set("weight", weight[0]);
+  history.replaceState(null, "", url);
+  fit();
+}
+function step(delta) {
+  const list = active === "medicine" ? MEDICINE : WEIGHT;
+  const current = indexOf(list, params().get(active));
+  const next = (current + delta + list.length) % list.length;
+  const url = new URL(location.href);
+  url.searchParams.set(active, list[next][0]);
+  history.replaceState(null, "", url);
+  show();
+}
+function fit() {
+  const sheet = stage.firstElementChild;
+  if (!sheet) return;
+  const scale = Math.min(1, (window.innerWidth - 28) / sheet.offsetWidth);
+  stage.style.transform = `scale(${scale})`;
+  stage.parentElement.style.height = `${sheet.offsetHeight * scale + 8}px`;
+}
+document.getElementById("prev").addEventListener("click", () => step(-1));
+document.getElementById("next").addEventListener("click", () => step(1));
+groups.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-group]");
+  if (!button) return;
+  active = button.dataset.group;
+  show();
+});
+window.addEventListener("keydown", (event) => {
+  if (event.key === "ArrowLeft") step(-1);
+  if (event.key === "ArrowRight") step(1);
+  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    active = active === "medicine" ? "weight" : "medicine";
+    show();
+  }
+});
+window.addEventListener("resize", fit);
+show();
+</script>
+</body>
+</html>

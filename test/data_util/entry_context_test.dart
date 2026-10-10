@@ -108,6 +108,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('safaeh_confirm')));
     await tester.pumpAndSettle();
     expect(await blacklist.getKeys('bp'), isEmpty);
+    // The undo toast sits above the next sheet. Let it close first.
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pumpAndSettle();
 
     await bpRepo.add(entry.record!);
     await tester.tap(find.text('X'));

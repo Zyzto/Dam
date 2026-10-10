@@ -25,6 +25,8 @@ class PdfExportLatestReading {
     required this.sys,
     required this.dia,
     required this.pul,
+    this.sysBand,
+    this.diaBand,
   });
 
   /// Timestamp in the user's date format.
@@ -38,6 +40,12 @@ class PdfExportLatestReading {
 
   /// Pulse in bpm, or [pdfMissingValue].
   final String pul;
+
+  /// Systolic range name, such as Normal, when a systolic value exists.
+  final String? sysBand;
+
+  /// Diastolic range name, when a diastolic value exists.
+  final String? diaBand;
 }
 
 /// Summary statistics for the exported range.
@@ -50,6 +58,8 @@ class PdfExportStatistics {
     required this.activityLine,
     required this.latest,
     required this.table,
+    this.highest,
+    this.lowest,
   });
 
   /// Blood-pressure records in the exported range.
@@ -67,6 +77,12 @@ class PdfExportStatistics {
   /// Newest blood-pressure row, when one exists.
   final PdfExportLatestReading? latest;
 
+  /// Reading with the highest systolic, when one exists.
+  final PdfExportLatestReading? highest;
+
+  /// Reading with the lowest systolic, when one exists.
+  final PdfExportLatestReading? lowest;
+
   /// Header plus average / maximum / minimum rows.
   final List<List<String>> table;
 }
@@ -82,6 +98,8 @@ class PdfExportContent {
     this.chartPoints = const [],
     this.columnTypes = const [],
     this.rowDays = const [],
+    this.weightSeries,
+    this.medicineSeries = const [],
   });
 
   /// Build PDF strings from already-filtered [entries].
@@ -104,7 +122,14 @@ class PdfExportContent {
 
     return PdfExportContent(
       title: _title(newestFirst, analyzer, dateFormatter),
-      statistics: _statistics(snapshot, pressureUnit, dateFormatter),
+      statistics: _statistics(
+        snapshot,
+        newestFirst,
+        pressureUnit,
+        dateFormatter,
+      ),
+      weightSeries: _weightSeries(newestFirst, weightUnit),
+      medicineSeries: _medicineSeries(newestFirst),
       headers: columns.map((column) => column.userTitle()).toList(),
       columnTypes: columns.map((column) => column.restoreAbleType).toList(),
       chartPoints: [
@@ -148,8 +173,14 @@ class PdfExportContent {
   /// Data type for each logical export column, used for script-aware layout.
   final List<RowDataFieldType?> columnTypes;
 
-  /// Calendar day for each row, newest first, used for day-based striping.
+  /// Calendar day for each row, newest first, used to group the log by day.
   final List<DateTime> rowDays;
+
+  /// Weight chart data, when the export contains a body weight.
+  final PdfWeightSeries? weightSeries;
+
+  /// One series per medicine, name order.
+  final List<PdfMedicineSeries> medicineSeries;
 }
 
 String _title(
@@ -171,6 +202,7 @@ String _title(
 
 PdfExportStatistics _statistics(
   DashboardSnapshot snapshot,
+  List<CombinedEntry> newestFirst,
   PressureUnit pressureUnit,
   DateFormat dateFormatter,
 ) {
@@ -199,7 +231,21 @@ PdfExportStatistics _statistics(
             sys: _pdfPressure(latestEntry.sys, pressureUnit),
             dia: _pdfPressure(latestEntry.dia, pressureUnit),
             pul: _pdfNumber(latestEntry.pul?.toDouble()),
+            sysBand: _systolicBand(latestEntry.sys),
+            diaBand: _diastolicBand(latestEntry.dia),
           ),
+    highest: _extremeReading(
+      newestFirst,
+      pressureUnit,
+      dateFormatter,
+      highest: true,
+    ),
+    lowest: _extremeReading(
+      newestFirst,
+      pressureUnit,
+      dateFormatter,
+      highest: false,
+    ),
     table: [
       ['', 'sysLong'.tr(), 'diaLong'.tr(), 'pulLong'.tr()],
       [
@@ -221,6 +267,129 @@ PdfExportStatistics _statistics(
         _pdfNumber(period.minPul?.toDouble()),
       ],
     ],
+  );
+}
+
+PdfExportLatestReading? _extremeReading(
+  List<CombinedEntry> newestFirst,
+  PressureUnit pressureUnit,
+  DateFormat dateFormatter, {
+  required bool highest,
+}) {
+  CombinedEntry? match;
+  for (final entry in newestFirst) {
+    final sys = entry.sys;
+    if (sys == null) continue;
+    final current = match?.sys;
+    if (current == null ||
+        (highest ? sys.mmHg > current.mmHg : sys.mmHg < current.mmHg)) {
+      match = entry;
+    }
+  }
+  if (match == null) return null;
+  return PdfExportLatestReading(
+    time: dateFormatter.format(match.time),
+    sys: _pdfPressure(match.sys, pressureUnit),
+    dia: _pdfPressure(match.dia, pressureUnit),
+    pul: _pdfNumber(match.pul?.toDouble()),
+  );
+}
+
+String? _systolicBand(Pressure? pressure) {
+  if (pressure == null) return null;
+  final value = pressure.mmHg;
+  if (value < 120) return 'metricRangeNormal'.tr();
+  if (value < 130) return 'metricRangeElevated'.tr();
+  return 'metricRangeHigh'.tr();
+}
+
+String? _diastolicBand(Pressure? pressure) {
+  if (pressure == null) return null;
+  return pressure.mmHg < 80
+      ? 'metricRangeNormal'.tr()
+      : 'metricRangeHigh'.tr();
+}
+
+PdfWeightSeries? _weightSeries(
+  List<CombinedEntry> newestFirst,
+  WeightUnit weightUnit,
+) {
+  final byTime = <DateTime, Weight>{};
+  for (final entry in newestFirst) {
+    final weight = entry.weight?.weight;
+    if (weight == null) continue;
+    byTime[entry.time] = weight;
+  }
+  if (byTime.isEmpty) return null;
+  final times = byTime.keys.toList()..sort();
+  final points = [
+    for (final time in times)
+      PdfWeightPoint(time: time, value: weightUnit.extract(byTime[time]!)),
+  ];
+  final mean = points.map((point) => point.value).reduce((a, b) => a + b) /
+      points.length;
+  return PdfWeightSeries(
+    points: points,
+    latest: weightUnit.format(byTime[times.last]!),
+    average: weightUnit.format(weightUnit.store(mean)),
+  );
+}
+
+List<PdfMedicineSeries> _medicineSeries(List<CombinedEntry> entries) {
+  final seen = <String>{};
+  final grouped = <String, List<PdfMedicineDose>>{};
+  final names = <String, String>{};
+  final units = <String, String>{};
+  final colors = <String, int?>{};
+  for (final entry in entries) {
+    for (final intake in entry.allIntakes) {
+      final name = intake.medicine.designation.trim();
+      if (name.isEmpty) continue;
+      final unit = intake.medicine.unit.localizedSymbol;
+      final amount = intake.dosis.mg;
+      final identity =
+          '${intake.time.millisecondsSinceEpoch}|$name|$amount|$unit';
+      if (!seen.add(identity)) continue;
+      final key = '$name|$unit';
+      names[key] = name;
+      units[key] = unit;
+      colors.putIfAbsent(key, () => intake.medicine.color);
+      grouped.putIfAbsent(key, () => []).add(
+        PdfMedicineDose(time: intake.time, amount: amount),
+      );
+    }
+  }
+  final keys = grouped.keys.toList()..sort();
+  return [
+    for (final key in keys)
+      _medicineSeriesOf(
+        name: names[key]!,
+        unitSymbol: units[key]!,
+        color: colors[key],
+        doses: grouped[key]!,
+      ),
+  ];
+}
+
+PdfMedicineSeries _medicineSeriesOf({
+  required String name,
+  required String unitSymbol,
+  required int? color,
+  required List<PdfMedicineDose> doses,
+}) {
+  doses.sort((a, b) => a.time.compareTo(b.time));
+  final unit = MedicationUnit.values.firstWhere(
+    (candidate) =>
+        candidate.localizedSymbol == unitSymbol ||
+        candidate.symbol == unitSymbol,
+    orElse: () => MedicationUnit.mg,
+  );
+  return PdfMedicineSeries(
+    name: name,
+    unit: unitSymbol,
+    color: color,
+    latestLabel: formatMedicationDose(doses.last.amount, unit),
+    doses: doses,
   );
 }
 

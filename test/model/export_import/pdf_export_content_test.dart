@@ -205,5 +205,99 @@ void main() {
     expect(content.rows.single[5], contains('70.5'));
     expect(content.rows.single[6], contains('Lisinopril'));
     expect(content.rows.single[6], contains('10'));
+    expect(content.weightSeries, isNotNull);
+    expect(content.weightSeries!.latest, contains('70.5'));
+    expect(content.medicineSeries, hasLength(1));
+    expect(content.medicineSeries.single.name, 'Lisinopril');
+    expect(content.medicineSeries.single.doses, hasLength(1));
+    expect(content.medicineSeries.single.latestLabel, contains('10'));
+  });
+
+  test('highest and lowest follow the extreme systolic reading', () {
+    final low = mockEntry(
+      time: DateTime(2024, 6, 1, 8),
+      sys: 110,
+      dia: 70,
+      pul: 60,
+    );
+    final high = mockEntry(
+      time: DateTime(2024, 6, 2, 8),
+      sys: 148,
+      dia: 92,
+      pul: 80,
+    );
+    final content = contentOf([low, high]);
+
+    expect(content.statistics.highest!.sys, '148');
+    expect(content.statistics.highest!.dia, '92');
+    expect(content.statistics.highest!.time, contains('2024-06-02'));
+    expect(content.statistics.lowest!.sys, '110');
+    expect(content.statistics.lowest!.dia, '70');
+    expect(content.statistics.latest!.sysBand, 'High');
+    expect(content.statistics.latest!.diaBand, 'High');
+    expect(
+      contentOf([low]).statistics.latest!.sysBand,
+      'Normal',
+    );
+  });
+
+  test('charts weight in the preferred unit and keeps doses once', () {
+    final dose = MedicineIntake(
+      time: DateTime(2024, 7, 1, 8),
+      medicine: const Medicine(designation: 'Amlodipine'),
+      dosis: Weight.mg(5),
+    );
+    final later = MedicineIntake(
+      time: DateTime(2024, 7, 2, 8),
+      medicine: const Medicine(designation: 'Amlodipine'),
+      dosis: Weight.mg(5),
+    );
+    final morning = CombinedEntry(
+      time: DateTime(2024, 7, 1, 8),
+      record: BloodPressureRecord(
+        time: DateTime(2024, 7, 1, 8),
+        sys: Pressure.mmHg(120),
+        dia: Pressure.mmHg(80),
+      ),
+      intake: dose,
+      weight: BodyweightRecord(
+        time: DateTime(2024, 7, 1, 8),
+        weight: Weight.kg(70),
+      ),
+    );
+    final evening = CombinedEntry(
+      time: DateTime(2024, 7, 1, 20),
+      record: BloodPressureRecord(
+        time: DateTime(2024, 7, 1, 20),
+        sys: Pressure.mmHg(128),
+        dia: Pressure.mmHg(82),
+      ),
+      dayIntakes: [dose],
+      weight: BodyweightRecord(
+        time: DateTime(2024, 7, 1, 20),
+        weight: Weight.kg(71),
+      ),
+    );
+    final nextDay = CombinedEntry(
+      time: DateTime(2024, 7, 2, 8),
+      intake: later,
+    );
+    final content = contentOf(
+      [morning, evening, nextDay],
+      weightUnit: WeightUnit.lbs,
+    );
+
+    expect(content.weightSeries!.points, hasLength(2));
+    expect(
+      content.weightSeries!.points.first.value,
+      closeTo(WeightUnit.lbs.extract(Weight.kg(70)), 0.001),
+    );
+    expect(content.weightSeries!.points.first.time.isBefore(
+      content.weightSeries!.points.last.time,
+    ), isTrue);
+    expect(content.medicineSeries, hasLength(1));
+    expect(content.medicineSeries.single.doses, hasLength(2));
+    expect(content.medicineSeries.single.doses.first.time, dose.time);
+    expect(content.medicineSeries.single.doses.last.amount, 5);
   });
 }

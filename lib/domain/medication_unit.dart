@@ -1,3 +1,5 @@
+import 'package:easy_localization/easy_localization.dart';
+
 /// Unit for a medicine dose.
 enum MedicationUnit {
   /// Milligrams.
@@ -18,7 +20,7 @@ enum MedicationUnit {
   /// Milliliters.
   ml;
 
-  /// Short label shown next to a dose.
+  /// Latin symbol stored and matched independently of locale.
   String get symbol => switch (this) {
     MedicationUnit.mg => 'mg',
     MedicationUnit.mcg => 'mcg',
@@ -27,6 +29,13 @@ enum MedicationUnit {
     MedicationUnit.tablet => 'tab',
     MedicationUnit.ml => 'ml',
   };
+
+  /// Short label in the active language. Arabic milligrams are مغ.
+  String get localizedSymbol {
+    final translated = labelKey.tr();
+    if (translated.isEmpty || translated == labelKey) return symbol;
+    return translated;
+  }
 
   /// Localization key for the full unit name.
   String get labelKey => switch (this) {
@@ -55,5 +64,5 @@ String formatDoseAmount(double amount) {
 /// Format [amount] with [unit], e.g. `5 mg` or `1 tab`.
 String formatMedicationDose(double? amount, [MedicationUnit unit = MedicationUnit.mg]) {
   if (amount == null) return '';
-  return '${formatDoseAmount(amount)} ${unit.symbol}';
+  return '${formatDoseAmount(amount)} ${unit.localizedSymbol}';
 }

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:blood_pressure_app/core/database/health_database.dart';
+import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/logging.dart';
 import 'package:blood_pressure_app/model/storage/file_settings_loader.dart';
 import 'package:file_picker/file_picker.dart';
@@ -62,15 +63,16 @@ class ErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
       title: 'Critical error',
+      builder: (context, child) => AppToastHost(
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: Scaffold(
         appBar: AppBar(
           title: const Text('Critical error'),
           backgroundColor: Colors.red,
         ),
         body: Builder(
-          builder: (context) {
-            final scaffoldMessenger = ScaffoldMessenger.of(context);
-            return SingleChildScrollView(
+          builder: (context) => SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -87,8 +89,7 @@ class ErrorScreen extends StatelessWidget {
                       Clipboard.setData(ClipboardData(
                         text: 'Error:\nBuild number:${debugInfo.buildNumber}\n-----\n$title:\n---\n$text\n',
                       ),);
-                      scaffoldMessenger.showSnackBar(const SnackBar(
-                          content: Text('Copied to clipboard'),),);
+                      context.showSuccess('Copied to clipboard');
                     },
                     child: const Text('copy error message'),
                   ),
@@ -98,13 +99,11 @@ class ErrorScreen extends StatelessWidget {
                         final url = Uri.parse('https://github.com/derdilla/blood-pressure-monitor-fl/issues');
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url, mode: LaunchMode.externalApplication);
-                        } else {
-                          scaffoldMessenger.showSnackBar(const SnackBar(
-                            content: Text('ERR: Please open this website: https://github.com/derdilla/blood-pressure-monitor-fl/issues'),),);
+                        } else if (context.mounted) {
+                          context.showError('ERR: Please open this website: https://github.com/derdilla/blood-pressure-monitor-fl/issues');
                         }
                       } catch (e) {
-                        scaffoldMessenger.showSnackBar(SnackBar(
-                            content: Text('ERR: $e'),),);
+                        if (context.mounted) context.showError('ERR: $e');
                       }
                     },
                     child: const Text('open issue reporting website'),
@@ -121,8 +120,7 @@ class ErrorScreen extends StatelessWidget {
                           bytes: ZipEncoder().encodeBytes(archive!),
                         );
                       } catch(e) {
-                        scaffoldMessenger.showSnackBar(SnackBar(
-                            content: Text('ERR: $e')));
+                        if (context.mounted) context.showError('ERR: $e');
                       }
                     },
                     child: const Text('rescue settings'),
@@ -141,9 +139,9 @@ class ErrorScreen extends StatelessWidget {
                             .where((p) => File(p).existsSync())
                             .firstOrNull;
                         if (path == null) {
-                          scaffoldMessenger.showSnackBar(
-                            const SnackBar(content: Text('ERR: no database file')),
-                          );
+                          if (context.mounted) {
+                            context.showError('ERR: no database file');
+                          }
                           return;
                         }
                         await FilePicker.saveFile(
@@ -152,16 +150,14 @@ class ErrorScreen extends StatelessWidget {
                           type: FileType.any, // application/vnd.sqlite3
                         );
                       } catch(e) {
-                        scaffoldMessenger.showSnackBar(SnackBar(
-                          content: Text('ERR: $e'),),);
+                        if (context.mounted) context.showError('ERR: $e');
                       }
                     },
                     child: const Text('rescue db'),
                   ),
                 ],
               ),
-            );
-          },
+            ),
         ),
       ),
     );

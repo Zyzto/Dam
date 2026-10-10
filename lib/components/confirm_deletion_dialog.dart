@@ -42,29 +42,39 @@ Future<DeleteChoice> showConfirmDeletionChoice(
       title: title,
       showTitleInBody: false,
       body: Text(customDescription ?? 'confirmDeleteDesc'.tr()),
-      actions: [
-        TextButton(
-          key: const ValueKey('safaeh_cancel'),
-          onPressed: () => Navigator.pop(context, DeleteChoice.cancel),
-          child: Text('btnCancel'.tr()),
-        ),
-        TextButton(
-          key: const ValueKey('safaeh_confirm'),
-          onPressed: () => Navigator.pop(context, DeleteChoice.delete),
-          child: Text('delete'.tr()),
-        ),
-        if (allowBlacklist)
-          FilledButton(
-            key: const ValueKey('deleteAndBlacklist'),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
+      actions: responsiveSheetActions(
+        context,
+        onCancel: () => Navigator.pop(context, DeleteChoice.cancel),
+        actions: [
+          if (allowBlacklist)
+            TextButton(
+              key: const ValueKey('safaeh_confirm'),
+              onPressed: () => Navigator.pop(context, DeleteChoice.delete),
+              child: Text('delete'.tr()),
+            )
+          else
+            FilledButton(
+              key: const ValueKey('safaeh_confirm'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed: () => Navigator.pop(context, DeleteChoice.delete),
+              child: Text('delete'.tr()),
             ),
-            onPressed: () =>
-                Navigator.pop(context, DeleteChoice.deleteAndBlacklist),
-            child: Text('deleteAndBlacklist'.tr()),
-          ),
-      ],
+          if (allowBlacklist)
+            FilledButton(
+              key: const ValueKey('deleteAndBlacklist'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed: () =>
+                  Navigator.pop(context, DeleteChoice.deleteAndBlacklist),
+              child: Text('deleteAndBlacklist'.tr()),
+            ),
+        ],
+      ),
     ),
   );
   return result ?? DeleteChoice.cancel;

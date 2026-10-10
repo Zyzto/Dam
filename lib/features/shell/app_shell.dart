@@ -4,6 +4,7 @@ import 'package:blood_pressure_app/features/home/navigation_action_buttons.dart'
 import 'package:blood_pressure_app/features/measurement_list/measurement_filter_scope.dart';
 import 'package:blood_pressure_app/features/settings/app_settings.dart';
 import 'package:blood_pressure_app/features/shell/dashboard_app_bar.dart';
+import 'package:blood_pressure_app/features/shell/shell_nav_chrome.dart';
 import 'package:blood_pressure_app/features/shell/shell_tab.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -169,6 +170,8 @@ class _AppShellViewState extends State<_AppShellView> {
 
   @override
   void dispose() {
+    ShellNavChrome.mobileBottomNavVisible = false;
+    ShellNavChrome.publishActionColumnWidth(0);
     _pageController.removeListener(_syncPage);
     _pageController.dispose();
     _measurementFilter.dispose();
@@ -262,8 +265,22 @@ class _AppShellViewState extends State<_AppShellView> {
     };
   }
 
+  double _feedbackActionWidth() {
+    if (_index >= _tabs.length - 1) return 0;
+    final kind = _actionKind();
+    final isWeight = kind == NavigationActionKind.weight;
+    final isExport = kind == NavigationActionKind.export;
+    final showChip = !isWeight && !isExport && widget.showMedicine;
+    final showFab = isExport || isWeight || widget.showBloodPressure;
+    if (!showChip && !showFab) return 0;
+    return ShellNavChrome.actionColumnReserve;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+    ShellNavChrome.mobileBottomNavVisible = !keyboardVisible;
+    ShellNavChrome.publishActionColumnWidth(_feedbackActionWidth());
     final localeTag = Localizations.localeOf(context).toString();
     final destinations = _destinations();
     final pages = _visiblePages;
