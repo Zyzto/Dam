@@ -39,6 +39,7 @@ class MedicationSchedule {
     this.startDate,
     this.endDate,
     this.state = MedicationScheduleState.active,
+    this.shiftMissedDoseTimes,
   });
 
   final String? id;
@@ -69,25 +70,42 @@ class MedicationSchedule {
   final DateTime? endDate;
   final MedicationScheduleState state;
 
+  /// Whether a missed dose moves later times for this reminder.
+  ///
+  /// Null follows the app setting. True forces the move. False keeps the
+  /// saved times.
+  final bool? shiftMissedDoseTimes;
+
   /// Whether this schedule currently creates upcoming doses.
   bool get active => state == MedicationScheduleState.active;
 
+  /// The app setting applies when this reminder has no override.
+  bool movesAfterMissedDose(bool appSetting) =>
+      shiftMissedDoseTimes ?? appSetting;
+
   /// Returns this schedule with [state] changed.
-  MedicationSchedule copyWith({MedicationScheduleState? state}) =>
-      MedicationSchedule(
-        id: id,
-        medicineId: medicineId,
-        medicine: medicine,
-        doseAmount: doseAmount,
-        doseUnit: doseUnit,
-        timeMinutes: timeMinutes,
-        doseTimings: doseTimings,
-        weekdays: weekdays,
-        startDate: startDate,
-        endDate: endDate,
-        state: state ?? this.state,
-      );
+  MedicationSchedule copyWith({
+    MedicationScheduleState? state,
+    Object? shiftMissedDoseTimes = _keepShiftOverride,
+  }) => MedicationSchedule(
+    id: id,
+    medicineId: medicineId,
+    medicine: medicine,
+    doseAmount: doseAmount,
+    doseUnit: doseUnit,
+    timeMinutes: timeMinutes,
+    doseTimings: doseTimings,
+    weekdays: weekdays,
+    startDate: startDate,
+    endDate: endDate,
+    state: state ?? this.state,
+    shiftMissedDoseTimes: identical(shiftMissedDoseTimes, _keepShiftOverride)
+        ? this.shiftMissedDoseTimes
+        : shiftMissedDoseTimes as bool?,
+  );
 }
+
+const _keepShiftOverride = Object();
 
 /// One scheduled dose on a particular local date and time.
 class DoseOccurrence {

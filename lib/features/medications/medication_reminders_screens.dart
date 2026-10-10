@@ -4,9 +4,11 @@ import 'dart:ui' as ui;
 
 import 'package:blood_pressure_app/components/animated_floating_action_button.dart';
 import 'package:blood_pressure_app/components/snack_bar_stable_fab_location.dart';
+import 'package:blood_pressure_app/core/repository/repo_context.dart';
 import 'package:blood_pressure_app/core/repository/repository_providers.dart';
 import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/domain/domain.dart';
+import 'package:blood_pressure_app/features/measurement_list/measurement_detail_screen.dart';
 import 'package:blood_pressure_app/features/medications/medication_reminder_plan.dart';
 import 'package:blood_pressure_app/features/medications/medication_reminder_providers.dart';
 import 'package:blood_pressure_app/features/medications/medication_reminder_runtime.dart';
@@ -15,6 +17,7 @@ import 'package:blood_pressure_app/features/medications/medicine_name.dart';
 import 'package:blood_pressure_app/features/settings/add_medication_dialog.dart';
 import 'package:blood_pressure_app/features/settings/app_settings.dart';
 import 'package:blood_pressure_app/features/statistics/dashboard/dashboard_date_range_sheet.dart';
+import 'package:blood_pressure_app/model/combined_entry.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -48,8 +51,12 @@ Future<List<DoseOccurrence>> upcomingDoseOccurrences(
   final now = from ?? DateTime.now();
   final firstDay = DateTime(now.year, now.month, now.day);
   final grace = Duration(minutes: missedDoseShiftLimitMinutes);
+  final schedules = await repository.getAll();
+  final anyMoves =
+      shiftMissedDoseTimes ||
+      schedules.any((schedule) => schedule.shiftMissedDoseTimes == true);
   final horizon = reminderHorizonDays(
-    shiftMissedDoseTimes: shiftMissedDoseTimes,
+    shiftMissedDoseTimes: anyMoves,
     grace: grace,
   );
   final history = horizon == savedReminderHorizonDays
@@ -72,6 +79,7 @@ Future<List<DoseOccurrence>> upcomingDoseOccurrences(
     now: now,
     shiftMissedDoseTimes: shiftMissedDoseTimes,
     grace: grace,
+    movesTimes: (dose) => dose.schedule.movesAfterMissedDose(shiftMissedDoseTimes),
   );
 }
 
@@ -83,7 +91,11 @@ Future<void> _recordDoseReminder(
 }) async {
   final runtime = MedicationReminderRuntime.instance;
   await runtime.cancelClaimedDose(occurrence.id);
-  if (!settings.shiftMissedDoseTimes) {
+  final schedules = await repository.getAll();
+  final anyMoves =
+      settings.shiftMissedDoseTimes ||
+      schedules.any((schedule) => schedule.shiftMissedDoseTimes == true);
+  if (!anyMoves) {
     if (snoozeUntil != null) {
       await runtime.scheduleSnooze(occurrence, snoozeUntil);
     }
@@ -205,12 +217,24 @@ Map<String, DateTime> _doseShiftTargets(
   List<DoseOccurrence> occurrences,
   DateTime now,
   AppSettings settings,
-) => shiftedDoseTargets(
-  occurrences,
-  now: now,
-  enabled: settings.medicineFeatureEnabled && settings.shiftMissedDoseTimes,
-  grace: Duration(minutes: settings.missedDoseShiftLimitMinutes),
-);
+) {
+  if (!settings.medicineFeatureEnabled) {
+    return shiftedDoseTargets(
+      occurrences,
+      now: now,
+      enabled: false,
+      grace: Duration.zero,
+    );
+  }
+  return shiftedDoseTargets(
+    occurrences,
+    now: now,
+    enabled: settings.shiftMissedDoseTimes,
+    grace: Duration(minutes: settings.missedDoseShiftLimitMinutes),
+    movesTimes: (dose) =>
+        dose.schedule.movesAfterMissedDose(settings.shiftMissedDoseTimes),
+  );
+}
 
 bool _sameClockMinute(DateTime a, DateTime b) =>
     a.year == b.year &&
@@ -450,12 +474,15 @@ class _MedicationReminderCardState
 
   void _syncShiftedReminders() {
     final settings = ref.read(appSettingsProvider);
-    if (!settings.shiftMissedDoseTimes) return;
     final occurrences = ref
         .read(homeMedicationOccurrencesProvider)
         .asData
         ?.value;
     if (occurrences == null) return;
+    final anyMoves =
+        settings.shiftMissedDoseTimes ||
+        occurrences.any((dose) => dose.schedule.shiftMissedDoseTimes == true);
+    if (!anyMoves) return;
     final targets = _doseShiftTargets(occurrences, DateTime.now(), settings);
     if (targets.isEmpty) return;
     final now = DateTime.now();
@@ -2336,6 +2363,72 @@ bool _doseIsRecorded(DoseOccurrence dose) {
   return status == 'taken' || status == 'skipped';
 }
 
+/// Open the measurement entry that records [dose] as taken.
+Future<void> _openTakenDoseEntry(
+  BuildContext context,
+  WidgetRef ref,
+  DoseOccurrence dose,
+) async {
+  final intakes = await context.intakeRepo.get(DateRange.all());
+  MedicineIntake? linked;
+  for (final candidate in intakes) {
+    if (candidate.occurrenceId == dose.id) {
+      linked = candidate;
+      break;
+    }
+  }
+  final logged =
+      linked ??
+      MedicineIntake(
+        time: dose.takenAt ?? dose.scheduledAt,
+        medicine: dose.schedule.medicine,
+        dosis: Weight.mg(dose.schedule.doseAmount),
+        occurrenceId: dose.id,
+      );
+  if (!context.mounted) return;
+  final day = DateTime(logged.time.year, logged.time.month, logged.time.day);
+  final range = DateRange(
+    start: day,
+    end: DateTime(day.year, day.month, day.day, 23, 59, 59),
+  );
+  final recordsRepo = context.bpRepo;
+  final notesRepo = context.noteRepo;
+  final records = await recordsRepo.get(range);
+  final notes = await notesRepo.get(range);
+  if (!context.mounted) return;
+  final dayIntakes = [
+    for (final intake in intakes)
+      if (_sameCalendarDay(intake.time, day)) intake,
+    if (linked == null) logged,
+  ];
+  final merged = CombinedEntryList.merged(records, notes, dayIntakes)
+    ..sort((a, b) => b.time.compareTo(a.time));
+  final rows = ref.read(appSettingsProvider).bloodPressureEnabled
+      ? CombinedEntryList.forBloodPressureList(merged)
+      : merged.where((entry) => entry.isMedicineOnly).toList();
+  CombinedEntry? entry;
+  for (final row in rows) {
+    if (row.allIntakes.any((intake) => intake.occurrenceId == dose.id)) {
+      entry = row;
+      break;
+    }
+  }
+  final opened = entry ?? CombinedEntry(time: logged.time, intake: logged);
+  if (!context.mounted) return;
+  await Navigator.of(context).push<void>(
+    MaterialPageRoute<void>(
+      builder: (_) => MeasurementDetailScreen(entry: opened),
+    ),
+  );
+  if (!context.mounted) return;
+  ref.invalidate(medicationDayProvider);
+  ref.invalidate(todayMedicationOccurrencesProvider);
+  ref.invalidate(homeMedicationOccurrencesProvider);
+}
+
+bool _sameCalendarDay(DateTime time, DateTime day) =>
+    time.year == day.year && time.month == day.month && time.day == day.day;
+
 enum _MedicationRepeatPreset { everyDay, weekdays, weekends, custom }
 
 class MedicationScheduleEditorScreen extends ConsumerStatefulWidget {
@@ -2361,6 +2454,7 @@ class _MedicationScheduleEditorScreenState
   bool _showCustomWeekdays = false;
   DateTime? _startDate;
   DateTime? _endDate;
+  bool? _shiftMissedDoseTimes;
   bool _loading = true;
   bool _saving = false;
 
@@ -2379,6 +2473,7 @@ class _MedicationScheduleEditorScreenState
     ];
     _startDate = initial?.startDate;
     _endDate = initial?.endDate;
+    _shiftMissedDoseTimes = initial?.shiftMissedDoseTimes;
     if (_times.isEmpty) {
       _times.add(8 * 60);
       _doseTimings.add(MedicationDoseTiming.anytime);
@@ -2626,6 +2721,7 @@ class _MedicationScheduleEditorScreenState
             startDate: _startDate,
             endDate: _endDate,
             state: widget.initial?.state ?? MedicationScheduleState.active,
+            shiftMissedDoseTimes: _shiftMissedDoseTimes,
           ),
         );
     final settings = ref.read(appSettingsProvider);
@@ -3114,6 +3210,72 @@ class _MedicationScheduleEditorScreenState
                                   ),
                                 ),
                               ),
+                            const Divider(height: 28),
+                            Text(
+                              _t(
+                                'shiftMissedDoseTimes',
+                                'Move times after a missed dose',
+                              ),
+                              style: theme.textTheme.labelLarge,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _t(
+                                'reminderShiftOverrideHint',
+                                'This reminder can follow the app setting or choose its own.',
+                              ),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                ChoiceChip(
+                                  label: Text(
+                                    ref.watch(appSettingsProvider).shiftMissedDoseTimes
+                                        ? _t(
+                                            'reminderShiftFollowOn',
+                                            'App setting: On',
+                                          )
+                                        : _t(
+                                            'reminderShiftFollowOff',
+                                            'App setting: Off',
+                                          ),
+                                  ),
+                                  selected: _shiftMissedDoseTimes == null,
+                                  onSelected: (_) => setState(
+                                    () => _shiftMissedDoseTimes = null,
+                                  ),
+                                ),
+                                ChoiceChip(
+                                  label: Text(
+                                    _t(
+                                      'reminderShiftOn',
+                                      'On for this reminder',
+                                    ),
+                                  ),
+                                  selected: _shiftMissedDoseTimes == true,
+                                  onSelected: (_) => setState(
+                                    () => _shiftMissedDoseTimes = true,
+                                  ),
+                                ),
+                                ChoiceChip(
+                                  label: Text(
+                                    _t(
+                                      'reminderShiftOff',
+                                      'Off for this reminder',
+                                    ),
+                                  ),
+                                  selected: _shiftMissedDoseTimes == false,
+                                  onSelected: (_) => setState(
+                                    () => _shiftMissedDoseTimes = false,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),

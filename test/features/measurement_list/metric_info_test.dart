@@ -1,5 +1,6 @@
 import 'package:blood_pressure_app/features/measurement_list/metric_info.dart';
 import 'package:blood_pressure_app/model/body_sex.dart';
+import 'package:blood_pressure_app/model/range_limits.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../util.dart';
@@ -14,6 +15,7 @@ void main() {
     double? weightKg,
     int sysWarn = 120,
     int diaWarn = 80,
+    RangeLimits limits = RangeLimits.standard,
   }) => MetricInfo.resolve(
     kind: kind,
     current: current,
@@ -23,6 +25,7 @@ void main() {
     weightKg: weightKg,
     sysWarn: sysWarn,
     diaWarn: diaWarn,
+    limits: limits,
   );
 
   test('classifies WHO BMI bands', () {
@@ -78,7 +81,41 @@ void main() {
     expect(resolve(MetricKind.pulse, 110).currentBand?.id, 'high');
 
     final weight = resolve(MetricKind.weight, 70, heightCm: 180);
-    expect(weight.currentBand?.id, 'healthy');
-    expect(weight.bands.single.interval, contains('kg'));
+    expect(weight.currentBand?.id, 'normal');
+    expect(weight.bands.map((band) => band.id), [
+      'underweight',
+      'normal',
+      'overweight',
+      'obesity',
+    ]);
+    expect(weight.bands[1].interval, contains('kg'));
+  });
+
+  test('uses custom BMI and blood-pressure cutoffs', () {
+    const limits = RangeLimits(
+      bmiNormalMin: 20,
+      bmiOverweightMin: 28,
+      bmiObeseMin: 35,
+      sysElevatedMmHg: 125,
+      sysHighMmHg: 140,
+      diaHighMmHg: 90,
+    );
+    expect(resolve(MetricKind.bmi, 19, limits: limits).currentBand?.id, 'underweight');
+    expect(resolve(MetricKind.bmi, 27, limits: limits).currentBand?.id, 'normal');
+    expect(resolve(MetricKind.bmi, 34, limits: limits).currentBand?.id, 'overweight');
+    expect(resolve(MetricKind.bmi, 35, limits: limits).currentBand?.id, 'obesity');
+    expect(resolve(MetricKind.sys, 124, limits: limits).currentBand?.id, 'normal');
+    expect(resolve(MetricKind.sys, 130, limits: limits).currentBand?.id, 'elevated');
+    expect(resolve(MetricKind.sys, 140, limits: limits).currentBand?.id, 'high');
+    expect(resolve(MetricKind.dia, 89, limits: limits).currentBand?.id, 'normal');
+    expect(resolve(MetricKind.dia, 90, limits: limits).currentBand?.id, 'high');
+
+    final weight = resolve(
+      MetricKind.weight,
+      100,
+      heightCm: 180,
+      limits: limits,
+    );
+    expect(weight.currentBand?.id, 'overweight');
   });
 }

@@ -1,4 +1,5 @@
 import 'package:blood_pressure_app/l10n/app_locales.dart';
+import 'package:blood_pressure_app/model/range_limits.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_settings_framework/flutter_settings_framework.dart';
@@ -621,6 +622,92 @@ const bodyProfileAction = ActionSetting(
   order: 2,
 );
 
+const weightRangeLimitsAction = ActionSetting(
+  'weight_range_limits',
+  titleKey: 'weightRangeLimits',
+  subtitleKey: 'weightRangeLimitsDesc',
+  icon: Icons.straighten,
+  section: 'weight',
+  order: 3,
+  searchTerms: {
+    'en': [
+      'bmi',
+      'obese',
+      'obesity',
+      'overweight',
+      'underweight',
+      'normal',
+      'limit',
+      'range',
+    ],
+    'ar': ['سمنة', 'وزن', 'طبيعي', 'مؤشر', 'حد'],
+  },
+);
+
+const bpRangeLimitsAction = ActionSetting(
+  'bp_range_limits',
+  titleKey: 'bpRangeLimits',
+  subtitleKey: 'bpRangeLimitsDesc',
+  icon: Icons.favorite_border,
+  section: 'blood_pressure',
+  order: 4,
+  searchTerms: {
+    'en': [
+      'blood pressure',
+      'systolic',
+      'diastolic',
+      'normal',
+      'elevated',
+      'high',
+      'limit',
+      'range',
+    ],
+    'ar': ['ضغط', 'انقباضي', 'انبساطي', 'طبيعي', 'حد'],
+  },
+);
+
+const bmiNormalMinSetting = DoubleSetting(
+  'bmi_normal_min',
+  defaultValue: RangeLimits.defaultBmiNormalMin,
+  titleKey: 'rangeLimitNormalFrom',
+  visible: false,
+);
+
+const bmiOverweightMinSetting = DoubleSetting(
+  'bmi_overweight_min',
+  defaultValue: RangeLimits.defaultBmiOverweightMin,
+  titleKey: 'rangeLimitOverweightFrom',
+  visible: false,
+);
+
+const bmiObeseMinSetting = DoubleSetting(
+  'bmi_obese_min',
+  defaultValue: RangeLimits.defaultBmiObeseMin,
+  titleKey: 'rangeLimitObesityFrom',
+  visible: false,
+);
+
+const sysElevatedMmHgSetting = IntSetting(
+  'sys_elevated_mmhg',
+  defaultValue: RangeLimits.defaultSysElevatedMmHg,
+  titleKey: 'rangeLimitSysElevated',
+  visible: false,
+);
+
+const sysHighMmHgSetting = IntSetting(
+  'sys_high_mmhg',
+  defaultValue: RangeLimits.defaultSysHighMmHg,
+  titleKey: 'rangeLimitSysHigh',
+  visible: false,
+);
+
+const diaHighMmHgSetting = IntSetting(
+  'dia_high_mmhg',
+  defaultValue: RangeLimits.defaultDiaHighMmHg,
+  titleKey: 'rangeLimitDiaHigh',
+  visible: false,
+);
+
 const medicationsAction = ActionSetting(
   'medications',
   titleKey: 'manageMedications',
@@ -932,6 +1019,14 @@ SettingsRegistry createAppSettingsRegistry() => SettingsRegistry.withSettings(
     bodySexSetting,
     knownBleDevicesSetting,
     bodyProfileAction,
+    weightRangeLimitsAction,
+    bpRangeLimitsAction,
+    bmiNormalMinSetting,
+    bmiOverweightMinSetting,
+    bmiObeseMinSetting,
+    sysElevatedMmHgSetting,
+    sysHighMmHgSetting,
+    diaHighMmHgSetting,
     medicationsAction,
     medicationNotificationsEnabledSetting,
     overdueReminderCountSetting,

@@ -9,13 +9,12 @@ void main() {
     usePhoneTestSurface(tester);
     await loadDialog(tester, showConfirmDeletionDialog);
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('safaeh_cancel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('safaeh_cancel')), findsNothing);
     expect(find.byKey(const ValueKey('safaeh_confirm')), findsOneWidget);
     expect(find.byKey(const ValueKey('deleteAndBlacklist')), findsNothing);
 
     expect(find.text('Confirm deletion'), findsOneWidget);
     expect(find.text('Delete this entry? (You can turn off these confirmations in the settings.)'), findsOneWidget);
-    expect(find.text('CANCEL'), findsOneWidget);
     expect(find.text('Delete'), findsOneWidget);
   });
 
@@ -26,7 +25,7 @@ void main() {
       showConfirmDeletionChoice(context, allowBlacklist: true)
           .then((value) => choice = value);
     });
-    await tester.tap(find.byKey(const ValueKey('safaeh_cancel')));
+    await dismissSafaeh(tester);
     await tester.pumpAndSettle();
     expect(choice, DeleteChoice.cancel);
   });

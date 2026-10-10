@@ -142,8 +142,10 @@ Duration scheduledDoseInterval(
 /// Take-times after a dose stays untaken past [grace].
 ///
 /// Saved schedule times stay as they are. The returned map only contains
-/// doses whose take-time moved. When [enabled] is false, or [grace] is zero,
-/// the map is empty.
+/// doses whose take-time moved. When [grace] is zero, or [enabled] is false
+/// and [movesTimes] is omitted, the map is empty. [movesTimes] decides each
+/// dose on its own, so one reminder can follow the app setting while another
+/// overrides it.
 ///
 /// Doses of one medicine are walked from earliest to latest. Duplicate ids
 /// collapse to the last copy.
@@ -169,15 +171,19 @@ Map<String, DateTime> shiftedDoseTargets(
   required DateTime now,
   required bool enabled,
   required Duration grace,
+  bool Function(DoseOccurrence dose)? movesTimes,
   Map<String, DateTime>? followUpFrom,
 }) {
-  if (!enabled || grace <= Duration.zero) return const {};
+  if (grace <= Duration.zero) return const {};
+  if (movesTimes == null && !enabled) return const {};
+  bool moves(DoseOccurrence dose) => movesTimes?.call(dose) ?? enabled;
   final unique = <String, DoseOccurrence>{};
   for (final dose in occurrences) {
     unique[dose.id] = dose;
   }
   final byMedicine = <String, List<DoseOccurrence>>{};
   for (final dose in unique.values) {
+    if (!moves(dose)) continue;
     final key = dose.schedule.medicineId.isNotEmpty
         ? dose.schedule.medicineId
         : (dose.schedule.id ?? dose.id);
@@ -314,9 +320,17 @@ List<DoseOccurrence> dosesForReminderList({
   required DateTime now,
   required bool shiftMissedDoseTimes,
   required Duration grace,
+  bool Function(DoseOccurrence dose)? movesTimes,
 }) {
-  if (!shiftMissedDoseTimes || grace <= Duration.zero) return upcoming;
-  return [...history, ...upcoming];
+  if (grace <= Duration.zero) return upcoming;
+  bool moves(DoseOccurrence dose) =>
+      movesTimes?.call(dose) ?? shiftMissedDoseTimes;
+  if (!history.any(moves) && !upcoming.any(moves)) return upcoming;
+  return [
+    for (final dose in history)
+      if (moves(dose)) dose,
+    ...upcoming,
+  ];
 }
 
 /// Whether a dose is shown on the countdown, the next-up lines, and the widget.

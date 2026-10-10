@@ -85,6 +85,7 @@ class PdfConverter with Loggable {
       pressureUnit: settings.preferredPressureUnit,
       weightUnit: settings.weightUnit,
       columns: columns,
+      limits: settings.rangeLimits,
     );
   }
 

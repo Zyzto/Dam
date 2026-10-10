@@ -23,11 +23,19 @@ class HomePresenceObserver extends NavigatorObserver with ChangeNotifier {
   bool _onSettingsTab = false;
   bool _onMainRoute = true;
   bool _onSettingsRoute = false;
+  bool _shellNavVisible = true;
+  final List<Route<dynamic>> _stack = [];
   final Map<Route<dynamic>, bool> _mainRoutes = {};
   final Map<Route<dynamic>, bool> _settingsRoutes = {};
 
   /// Whether the current top route is the home tab.
   bool get onHome => _onHomeRoute && _onHomeTab;
+
+  /// Whether the floating bottom nav is on screen for the current page.
+  ///
+  /// Dialogs and sheets do not hide it. A full-screen route pushed over the
+  /// shell does.
+  bool get shellNavVisible => _shellNavVisible;
 
   /// Whether auto-sync is allowed for the current screen.
   ///
@@ -47,6 +55,17 @@ class HomePresenceObserver extends NavigatorObserver with ChangeNotifier {
   static bool isSettingsRoute(Route<dynamic>? route) {
     final name = route?.settings.name;
     return name == '/settings' || name?.startsWith('/settings/') == true;
+  }
+
+  /// Shell pages that paint the floating bottom navigation bar.
+  static bool isShellRoute(Route<dynamic>? route) {
+    if (route is PopupRoute) return false;
+    final name = route?.settings.name;
+    return name == '/' ||
+        name == Navigator.defaultRouteName ||
+        name == '/weight' ||
+        name == '/statistics' ||
+        name == '/settings';
   }
 
   /// Whether [route] is an app screen where auto-sync may run.
@@ -84,29 +103,43 @@ class HomePresenceObserver extends NavigatorObserver with ChangeNotifier {
         : isMainRoute(route);
   }
 
+  bool _shellNavFromStack() {
+    for (var i = _stack.length - 1; i >= 0; i--) {
+      final route = _stack[i];
+      if (route is PopupRoute) continue;
+      return isShellRoute(route);
+    }
+    return true;
+  }
+
   void _apply(Route<dynamic>? route) {
     final nextHome = isHomeRoute(route);
     final nextMain = _mainRoutes[route] ?? isMainRoute(route);
     final nextSettings = _settingsRoutes[route] ?? isSettingsRoute(route);
+    final nextShell = _shellNavFromStack();
     if (nextHome == _onHomeRoute &&
         nextMain == _onMainRoute &&
-        nextSettings == _onSettingsRoute) {
+        nextSettings == _onSettingsRoute &&
+        nextShell == _shellNavVisible) {
       return;
     }
     _onHomeRoute = nextHome;
     _onMainRoute = nextMain;
     _onSettingsRoute = nextSettings;
+    _shellNavVisible = nextShell;
     notifyListeners();
   }
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _stack.add(route);
     _recordRoute(route, previousRoute: previousRoute);
     _apply(route);
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _stack.remove(route);
     _mainRoutes.remove(route);
     _settingsRoutes.remove(route);
     _apply(previousRoute);
@@ -114,6 +147,17 @@ class HomePresenceObserver extends NavigatorObserver with ChangeNotifier {
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (oldRoute != null) {
+      final index = _stack.indexOf(oldRoute);
+      if (index >= 0 && newRoute != null) {
+        _stack[index] = newRoute;
+      } else {
+        _stack.remove(oldRoute);
+        if (newRoute != null) _stack.add(newRoute);
+      }
+    } else if (newRoute != null) {
+      _stack.add(newRoute);
+    }
     final oldMain = oldRoute == null ? null : _mainRoutes[oldRoute];
     final oldSettings = oldRoute == null ? null : _settingsRoutes[oldRoute];
     if (oldRoute != null) {
@@ -134,6 +178,7 @@ class HomePresenceObserver extends NavigatorObserver with ChangeNotifier {
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _stack.remove(route);
     _mainRoutes.remove(route);
     _settingsRoutes.remove(route);
     _apply(previousRoute);
@@ -141,6 +186,7 @@ class HomePresenceObserver extends NavigatorObserver with ChangeNotifier {
 
   @override
   void dispose() {
+    _stack.clear();
     _mainRoutes.clear();
     _settingsRoutes.clear();
     super.dispose();
@@ -593,6 +639,7 @@ class _BleLaunchSyncOverlayHostState extends State<_BleLaunchSyncOverlayHost> {
       motion: SafaehAnchoredMotion.fadeScale,
       link: view.indicatorLink,
       sourceRect: sourceRect,
+      maxCardWidth: MediaQuery.sizeOf(context).width,
       child: ListenableBuilder(
         listenable: view,
         builder: (context, _) => BleLaunchSyncCard(

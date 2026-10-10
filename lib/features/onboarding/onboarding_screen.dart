@@ -223,6 +223,16 @@ class _FeatureSetupPage extends ConsumerWidget {
             onChanged: (value) =>
                 ref.updateSetting(medicineFeatureEnabledSetting, value),
           ),
+          if (settings.medicineFeatureEnabled)
+            SwitchListTile(
+              key: const Key('onboarding-shift-missed-doses'),
+              title: Text('shiftMissedDoseTimes'.tr()),
+              subtitle: Text('onboardingShiftMissedHint'.tr()),
+              secondary: const Icon(Icons.update),
+              value: settings.shiftMissedDoseTimes,
+              onChanged: (value) =>
+                  ref.updateSetting(shiftMissedDoseTimesSetting, value),
+            ),
           SwitchListTile(
             key: const Key('onboarding-feature-weight'),
             title: Text('weight'.tr()),

@@ -49,6 +49,7 @@ void main() {
       'preferred_pressure_unit',
       'start_with_add_measurement_page',
       'graph_settings',
+      'bp_range_limits',
     ]);
     expect(advanced('blood_pressure'), [
       'validate_inputs',
@@ -58,6 +59,7 @@ void main() {
       'weight_input',
       'preferred_weight_unit',
       'body_profile',
+      'weight_range_limits',
     ]);
     expect(main('medications'), [
       'medicine_feature_enabled',

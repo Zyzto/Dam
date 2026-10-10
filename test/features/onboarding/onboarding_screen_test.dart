@@ -75,6 +75,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(_ctaLabel(tester), anyOf('Get started', 'onboardingGetStarted'));
     expect(_skip, findsOneWidget);
+    expect(find.byKey(const Key('onboarding-shift-missed-doses')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('onboarding-feature-medicine')));
+    await tester.pump();
+    expect(find.byKey(const Key('onboarding-shift-missed-doses')), findsNothing);
   });
 
   testWidgets('replay shows Close and Done on the last page', (tester) async {

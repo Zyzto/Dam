@@ -22,7 +22,8 @@ class PowerSyncMedicationScheduleRepository
       'SELECT s.id, s.med_id, s.dose_amount, s.dose_unit, '
       's.time_minutes_json, s.dose_timings_json, s.weekdays_mask, '
       's.start_date, s.end_date, '
-      's.active, s.ended, m.designation, m.color, m.default_dose_mg, '
+      's.active, s.ended, s.shift_missed_doses, m.designation, m.color, '
+      'm.default_dose_mg, '
       'm.dose_unit AS medicine_unit '
       'FROM medication_schedules s JOIN medicines m ON m.id = s.med_id '
       'ORDER BY s.active DESC, s.ended ASC, m.designation COLLATE NOCASE',
@@ -59,6 +60,11 @@ class PowerSyncMedicationScheduleRepository
       _dateKey(schedule.endDate),
       schedule.active ? 1 : 0,
       schedule.state == MedicationScheduleState.ended ? 1 : 0,
+      switch (schedule.shiftMissedDoseTimes) {
+        true => 1,
+        false => 0,
+        null => null,
+      },
     ];
     final existing = await _db.getAll(
       'SELECT id FROM medication_schedules WHERE id = ?',
@@ -69,8 +75,8 @@ class PowerSyncMedicationScheduleRepository
         'INSERT INTO medication_schedules '
         '(id, med_id, dose_amount, dose_unit, time_minutes_json, '
         'dose_timings_json, weekdays_mask, '
-        'start_date, end_date, active, ended) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'start_date, end_date, active, ended, shift_missed_doses) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [id, ...values],
       );
     } else {
@@ -78,7 +84,7 @@ class PowerSyncMedicationScheduleRepository
         'UPDATE medication_schedules SET med_id = ?, dose_amount = ?, dose_unit = ?, '
         'time_minutes_json = ?, dose_timings_json = ?, weekdays_mask = ?, '
         'start_date = ?, end_date = ?, '
-        'active = ?, ended = ? WHERE id = ?',
+        'active = ?, ended = ?, shift_missed_doses = ? WHERE id = ?',
         [...values, id],
       );
       await _db.execute(
@@ -98,6 +104,7 @@ class PowerSyncMedicationScheduleRepository
       startDate: schedule.startDate,
       endDate: schedule.endDate,
       state: schedule.state,
+      shiftMissedDoseTimes: schedule.shiftMissedDoseTimes,
     );
   }
 
@@ -144,7 +151,7 @@ class PowerSyncMedicationScheduleRepository
       'o.snooze_until_unix_s, o.taken_at_unix_s, '
       's.id AS schedule_id, s.med_id, s.dose_amount, s.dose_unit, '
       's.time_minutes_json, s.dose_timings_json, s.weekdays_mask, '
-      's.start_date, s.end_date, s.active, s.ended, '
+      's.start_date, s.end_date, s.active, s.ended, s.shift_missed_doses, '
       'm.designation, m.color, m.default_dose_mg, m.dose_unit AS medicine_unit '
       'FROM dose_occurrences o '
       'JOIN medication_schedules s ON s.id = o.schedule_id '
@@ -175,7 +182,7 @@ class PowerSyncMedicationScheduleRepository
       'o.snooze_until_unix_s, o.taken_at_unix_s, '
       's.id AS schedule_id, s.med_id, s.dose_amount, s.dose_unit, '
       's.time_minutes_json, s.dose_timings_json, s.weekdays_mask, '
-      's.start_date, s.end_date, s.active, s.ended, '
+      's.start_date, s.end_date, s.active, s.ended, s.shift_missed_doses, '
       'm.designation, m.color, m.default_dose_mg, m.dose_unit AS medicine_unit '
       'FROM dose_occurrences o '
       'JOIN medication_schedules s ON s.id = o.schedule_id '
@@ -207,7 +214,7 @@ class PowerSyncMedicationScheduleRepository
       'o.snooze_until_unix_s, o.taken_at_unix_s, '
       's.id AS schedule_id, s.med_id, s.dose_amount, s.dose_unit, '
       's.time_minutes_json, s.dose_timings_json, s.weekdays_mask, '
-      's.start_date, s.end_date, s.active, s.ended, '
+      's.start_date, s.end_date, s.active, s.ended, s.shift_missed_doses, '
       'm.designation, m.color, m.default_dose_mg, m.dose_unit AS medicine_unit '
       'FROM dose_occurrences o '
       'JOIN medication_schedules s ON s.id = o.schedule_id '
@@ -326,6 +333,7 @@ class PowerSyncMedicationScheduleRepository
           : (row['active'] as num).toInt() == 1
           ? MedicationScheduleState.active
           : MedicationScheduleState.paused,
+      shiftMissedDoseTimes: _shiftOverride(row['shift_missed_doses']),
     );
   }
 
@@ -337,6 +345,15 @@ class PowerSyncMedicationScheduleRepository
 
   static DateTime? _parseDate(String? value) =>
       value == null ? null : DateTime.tryParse(value);
+
+  static bool? _shiftOverride(Object? value) {
+    if (value is! num) return null;
+    return switch (value.toInt()) {
+      1 => true,
+      0 => false,
+      _ => null,
+    };
+  }
 
   static DateTime _day(DateTime value) =>
       DateTime(value.year, value.month, value.day);

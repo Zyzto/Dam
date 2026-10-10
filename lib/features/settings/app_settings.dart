@@ -8,6 +8,7 @@ import 'package:blood_pressure_app/model/bluetooth_measurement_import_mode.dart'
 import 'package:blood_pressure_app/model/body_sex.dart';
 import 'package:blood_pressure_app/model/horizontal_graph_line.dart';
 import 'package:blood_pressure_app/model/known_ble_device.dart';
+import 'package:blood_pressure_app/model/range_limits.dart';
 import 'package:blood_pressure_app/model/weight_unit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,6 +31,7 @@ class AppSettings {
     required this.animationSpeed,
     required this.sysWarn,
     required this.diaWarn,
+    required this.rangeLimits,
     required this.lastVersion,
     required this.allowManualTimeInput,
     required this.confirmDeletion,
@@ -95,6 +97,14 @@ class AppSettings {
       animationSpeed: controller.get(animationSpeedSetting),
       sysWarn: controller.get(sysWarnSetting),
       diaWarn: controller.get(diaWarnSetting),
+      rangeLimits: RangeLimits(
+        bmiNormalMin: controller.get(bmiNormalMinSetting),
+        bmiOverweightMin: controller.get(bmiOverweightMinSetting),
+        bmiObeseMin: controller.get(bmiObeseMinSetting),
+        sysElevatedMmHg: controller.get(sysElevatedMmHgSetting),
+        sysHighMmHg: controller.get(sysHighMmHgSetting),
+        diaHighMmHg: controller.get(diaHighMmHgSetting),
+      ),
       lastVersion: controller.get(lastVersionSetting),
       allowManualTimeInput: controller.get(allowManualTimeInputSetting),
       confirmDeletion: controller.get(confirmDeletionSetting),
@@ -172,6 +182,9 @@ class AppSettings {
   final int animationSpeed;
   final int sysWarn;
   final int diaWarn;
+
+  /// BMI and blood-pressure category cutoffs.
+  final RangeLimits rangeLimits;
   final int lastVersion;
   final bool allowManualTimeInput;
   final bool confirmDeletion;
@@ -280,6 +293,12 @@ AppSettings appSettings(Ref ref) {
   ref.watch(settings.provider(animationSpeedSetting));
   ref.watch(settings.provider(sysWarnSetting));
   ref.watch(settings.provider(diaWarnSetting));
+  ref.watch(settings.provider(bmiNormalMinSetting));
+  ref.watch(settings.provider(bmiOverweightMinSetting));
+  ref.watch(settings.provider(bmiObeseMinSetting));
+  ref.watch(settings.provider(sysElevatedMmHgSetting));
+  ref.watch(settings.provider(sysHighMmHgSetting));
+  ref.watch(settings.provider(diaHighMmHgSetting));
   ref.watch(settings.provider(lastVersionSetting));
   ref.watch(settings.provider(allowManualTimeInputSetting));
   ref.watch(settings.provider(confirmDeletionSetting));

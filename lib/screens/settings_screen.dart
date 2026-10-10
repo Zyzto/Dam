@@ -6,6 +6,7 @@ import 'package:blood_pressure_app/app.dart';
 import 'package:blood_pressure_app/components/color_picker.dart';
 import 'package:blood_pressure_app/core/layout/responsive_sheet.dart';
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
+import 'package:blood_pressure_app/core/widgets/defer_until_sheet_settled.dart';
 import 'package:blood_pressure_app/core/widgets/sheet_helpers.dart';
 import 'package:blood_pressure_app/core/widgets/toast.dart';
 import 'package:blood_pressure_app/features/settings/app_settings.dart';
@@ -14,6 +15,7 @@ import 'package:blood_pressure_app/features/settings/body_profile_screen.dart';
 import 'package:blood_pressure_app/features/settings/delete_data_screen.dart';
 import 'package:blood_pressure_app/features/settings/edadat_prefs.dart';
 import 'package:blood_pressure_app/features/settings/graph_markings_screen.dart';
+import 'package:blood_pressure_app/features/settings/range_limits_screen.dart';
 import 'package:blood_pressure_app/features/settings/registry.dart';
 import 'package:blood_pressure_app/features/settings/storage/edadat_file_storage.dart';
 import 'package:blood_pressure_app/features/settings/tiles/ble_engine_settings_tile.dart';
@@ -424,18 +426,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       final locale = Localizations.localeOf(context).toString();
       final current = appSettings.dateFormatString;
       final previewAt = DateTime.now();
-      String preview(String pattern) {
-        try {
-          return WesternDateFormat(pattern, locale).format(previewAt);
-        } catch (_) {
-          return pattern;
-        }
-      }
 
       return ListTile(
         leading: const Icon(Icons.schedule),
         title: Text('enterTimeFormatScreen'.tr()),
-        subtitle: Text(preview(current)),
+        subtitle: Text(_formatDatePreview(current, locale, previewAt)),
         trailing: settingsChevronEnd(context),
         onTap: () async {
           final patterns = [
@@ -447,17 +442,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             context: context,
             title: title,
             maxHeight: MediaQuery.sizeOf(context).height * 0.75,
-            child: SafaehTilePickerBody<String>(
-              showTitleInBody: false,
-              selected: current,
-              options: [
-                for (final pattern in patterns)
-                  SafaehTileOption<String>(
-                    value: pattern,
-                    label: preview(pattern),
-                    subtitle: pattern,
-                  ),
-              ],
+            child: DeferUntilSheetSettled(
+              placeholder: SheetOptionSkeleton(
+                count: patterns.length,
+                twoLine: true,
+              ),
+              child: _TimeFormatPicker(
+                patterns: patterns,
+                selected: current,
+                locale: locale,
+              ),
             ),
           );
           if (!mounted || result == null) return;
@@ -503,7 +497,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
     final appSettings = ref.watch(appSettingsProvider);
     final enabled = switch (setting.key) {
-      'graph_settings' => appSettings.bloodPressureEnabled,
+      'graph_settings' || 'bp_range_limits' => appSettings.bloodPressureEnabled,
+      'weight_range_limits' => appSettings.weightInput,
       'medications' => appSettings.medicineFeatureEnabled,
       _ => isSettingEnabled(settings, setting, ref),
     };
@@ -580,6 +575,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   title: title,
                   selected: value,
                   maxHeight: MediaQuery.sizeOf(context).height * 0.75,
+                  deferUntilSettled: setting.key == languageSetting.key,
                   options: [
                     for (final option in options)
                       SheetPickerOption<String>(
@@ -703,6 +699,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         await Navigator.push(
           context,
           MaterialPageRoute<void>(builder: (_) => const BodyProfileScreen()),
+        );
+      case 'weight_range_limits':
+      case 'bp_range_limits':
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(builder: (_) => const RangeLimitsScreen()),
         );
       case 'medications':
         await Navigator.pushNamed(context, AppRoute.settingsMedications.path);
@@ -836,5 +838,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (context.mounted) context.showError('invalidZip'.tr());
       Log.warning('invalid zip', error: e, stackTrace: stack);
     }
+  }
+}
+
+String _formatDatePreview(String pattern, String locale, DateTime at) {
+  try {
+    return WesternDateFormat(pattern, locale).format(at);
+  } catch (_) {
+    return pattern;
+  }
+}
+
+/// Time-format rows, including a preview for each pattern.
+///
+/// Mounted only after the sheet animation settles. Building a formatter per
+/// pattern during the slide is what made this picker hitch.
+class _TimeFormatPicker extends StatefulWidget {
+  const _TimeFormatPicker({
+    required this.patterns,
+    required this.selected,
+    required this.locale,
+  });
+
+  final List<String> patterns;
+  final String selected;
+  final String locale;
+
+  @override
+  State<_TimeFormatPicker> createState() => _TimeFormatPickerState();
+}
+
+class _TimeFormatPickerState extends State<_TimeFormatPicker> {
+  late final DateTime _previewAt = DateTime.now();
+  late final List<String> _labels = [
+    for (final pattern in widget.patterns)
+      _formatDatePreview(pattern, widget.locale, _previewAt),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafaehTilePickerBody<String>(
+      showTitleInBody: false,
+      selected: widget.selected,
+      options: [
+        for (var i = 0; i < widget.patterns.length; i++)
+          SafaehTileOption<String>(
+            value: widget.patterns[i],
+            label: _labels[i],
+            subtitle: widget.patterns[i],
+          ),
+      ],
+    );
   }
 }

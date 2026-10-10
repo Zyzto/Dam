@@ -15,6 +15,7 @@ Future<String?> showInputDialog(
   initialValue: initialValue ?? '',
   doneLabel: 'btnConfirm'.tr(),
   cancelLabel: 'btnCancel'.tr(),
+  showTitleInBody: false,
 );
 
 /// Creates a dialog that only allows int and double inputs.
@@ -30,6 +31,7 @@ Future<double?> showNumberInputDialog(
     initialValue: initialValue?.toString() ?? '',
     doneLabel: 'btnConfirm'.tr(),
     cancelLabel: 'btnCancel'.tr(),
+    showTitleInBody: false,
     keyboardType: TextInputType.number,
     inputFormatters: [
       FilteringTextInputFormatter.allow(RegExp(r'([0-9]+(\.([0-9]*))?)')),

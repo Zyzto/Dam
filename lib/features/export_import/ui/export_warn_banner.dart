@@ -1,4 +1,3 @@
-import 'package:blood_pressure_app/components/custom_banner.dart';
 import 'package:blood_pressure_app/core/repository/repo_context.dart';
 import 'package:blood_pressure_app/features/export_import/model/export_preset.dart';
 import 'package:blood_pressure_app/features/export_import/model/import_field_type.dart';
@@ -7,6 +6,7 @@ import 'package:blood_pressure_app/model/storage/export_settings.dart';
 import 'package:blood_pressure_app/model/storage/types/export_format_setting.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:safaeh/safaeh.dart';
 
 /// Banner that gives the user information on the importability of their export.
 class ExportWarnBanner extends StatefulWidget {
@@ -102,13 +102,15 @@ class _ExportWarnBannerState extends State<ExportWarnBanner> {
     }));
   }
 
-  Widget _banner(String text) => CustomBanner(
-      content: Text(text),
-      action: TextButton(
-        onPressed: () => setState(() {
-          _hidden = true;
-        }),
-        child: Text('btnConfirm'.tr()),
-      ),
-    );
+  Widget _banner(String text) => SafaehInlineBanner(
+    message: text,
+    tone: SafaehBannerTone.warning,
+    icon: Icons.warning_amber_outlined,
+    trailing: TextButton(
+      onPressed: () => setState(() {
+        _hidden = true;
+      }),
+      child: Text('btnConfirm'.tr()),
+    ),
+  );
 }

@@ -255,6 +255,7 @@ void main() {
     DateTime? takenAt,
     DateTime? snoozeUntil,
     List<int> times = const [8 * 60, 20 * 60],
+    bool? shiftMissedDoseTimes,
   }) {
     return DoseOccurrence(
       id: id,
@@ -266,6 +267,7 @@ void main() {
         doseUnit: MedicationUnit.mg,
         timeMinutes: times,
         weekdays: const {1, 2, 3, 4, 5, 6, 7},
+        shiftMissedDoseTimes: shiftMissedDoseTimes,
       ),
       scheduledAt: at,
       status: status,
@@ -1048,6 +1050,62 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  test('a reminder can turn the move off while the app setting stays on', () {
+    final morning = DateTime(2026, 10, 3, 8);
+    final evening = DateTime(2026, 10, 3, 20);
+    final now = DateTime(2026, 10, 3, 10, 30);
+    bool moves(DoseOccurrence dose) =>
+        dose.schedule.movesAfterMissedDose(true);
+    final targets = shiftedDoseTargets(
+      [
+        slot('kept', morning, shiftMissedDoseTimes: false),
+        slot('kept-later', evening, shiftMissedDoseTimes: false),
+        slot('moved', morning, medicineId: 'other'),
+      ],
+      now: now,
+      enabled: true,
+      grace: grace,
+      movesTimes: moves,
+    );
+    expect(targets.containsKey('kept'), isFalse);
+    expect(targets.containsKey('kept-later'), isFalse);
+    expect(targets['moved'], now);
+  });
+
+  test('a reminder can turn the move on while the app setting stays off', () {
+    final morning = DateTime(2026, 10, 3, 8);
+    final evening = DateTime(2026, 10, 3, 20);
+    final now = DateTime(2026, 10, 3, 10, 30);
+    bool moves(DoseOccurrence dose) =>
+        dose.schedule.movesAfterMissedDose(false);
+    final targets = shiftedDoseTargets(
+      [
+        slot('moved', morning, shiftMissedDoseTimes: true),
+        slot('moved-later', evening, shiftMissedDoseTimes: true),
+        slot('kept', morning, medicineId: 'other'),
+      ],
+      now: now,
+      enabled: false,
+      grace: grace,
+      movesTimes: moves,
+    );
+    expect(targets['moved'], now);
+    expect(
+      targets['moved-later'],
+      evening.add(const Duration(hours: 2, minutes: 30)),
+    );
+    expect(targets.containsKey('kept'), isFalse);
+    final listed = dosesForReminderList(
+      history: [slot('old', DateTime(2026, 10, 2, 8), shiftMissedDoseTimes: true)],
+      upcoming: [slot('today', morning)],
+      now: now,
+      shiftMissedDoseTimes: false,
+      grace: grace,
+      movesTimes: moves,
+    );
+    expect(listed.map((dose) => dose.id), ['old', 'today']);
   });
 
   test('a running snooze is the take-time, even when the dose also slid', () {

@@ -226,6 +226,12 @@ void main() {
     expect(find.byType(BleLaunchSyncCard), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 320));
     _expectPanelOnScreen(tester);
+    await tester.pump(const Duration(milliseconds: 320));
+    final card = tester.getRect(find.byType(BleLaunchSyncCard));
+    final screen =
+        Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+    expect(card.left, 0, reason: 'card $card screen $screen');
+    expect(card.right, screen.width, reason: 'card $card screen $screen');
   });
 
   testWidgets('keeps the sync panel on screen in Arabic', (tester) async {

@@ -6,6 +6,7 @@ class _DayLogCard extends StatelessWidget {
     required this.onTaken,
     required this.onSkip,
     required this.onSnooze,
+    required this.onOpenTaken,
     this.shiftedTo,
   });
 
@@ -14,6 +15,7 @@ class _DayLogCard extends StatelessWidget {
   final VoidCallback onTaken;
   final VoidCallback onSkip;
   final VoidCallback onSnooze;
+  final VoidCallback onOpenTaken;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +66,7 @@ class _DayLogCard extends StatelessWidget {
             : localizations.formatTimeOfDay(TimeOfDay.fromDateTime(takenAt)),
         statusLabel: status.$1,
         statusColor: status.$2,
+        onTap: onOpenTaken,
       );
     }
     return Padding(

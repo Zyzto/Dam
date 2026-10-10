@@ -7,11 +7,13 @@ import 'package:blood_pressure_app/domain/domain.dart';
 import 'package:blood_pressure_app/features/home/chart_bucket_calendar.dart';
 import 'package:blood_pressure_app/features/home/home_medication_timing_chart.dart';
 import 'package:blood_pressure_app/features/measurement_list/metric_info.dart';
+import 'package:blood_pressure_app/features/settings/app_settings.dart';
 import 'package:blood_pressure_app/features/settings/registry.dart';
 import 'package:blood_pressure_app/features/statistics/chart/chart_tooltip.dart';
 import 'package:blood_pressure_app/features/statistics/chart/time_axis_titles.dart';
 import 'package:blood_pressure_app/features/statistics/dashboard/dashboard_section.dart';
 import 'package:blood_pressure_app/l10n/western_digits.dart';
+import 'package:blood_pressure_app/model/range_limits.dart';
 import 'package:blood_pressure_app/model/storage/interval_store_manager.dart';
 import 'package:blood_pressure_app/theme/app_text.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
@@ -216,6 +218,7 @@ class _HomeBpChartViewState extends ConsumerState<_HomeBpChartView>
   @override
   Widget build(BuildContext context) {
     Localizations.localeOf(context);
+    final limits = ref.watch(appSettingsProvider).rangeLimits;
     final selectedRange = ref.watch(
       currentDateRangeProvider(IntervalStoreManagerLocation.mainPage),
     );
@@ -313,7 +316,10 @@ class _HomeBpChartViewState extends ConsumerState<_HomeBpChartView>
                     ),
                     HomeBpChartKind.classification => Align(
                       alignment: Alignment.topCenter,
-                      child: _ClassificationChart(records: widget.records),
+                      child: _ClassificationChart(
+                        records: widget.records,
+                        limits: limits,
+                      ),
                     ),
                     HomeBpChartKind.pulsePressure => _PulsePressureChart(
                       records: widget.records,
@@ -704,7 +710,13 @@ String _toneLabel(MetricBandTone tone) => switch (tone) {
   MetricBandTone.high => 'metricRangeHigh'.tr(),
 };
 
-MetricBandTone? _classify(BloodPressureRecord record) {
+MetricBandTone _pressureTone(PressureBand band) => switch (band) {
+  PressureBand.normal => MetricBandTone.typical,
+  PressureBand.elevated => MetricBandTone.elevated,
+  PressureBand.high => MetricBandTone.high,
+};
+
+MetricBandTone? _classify(BloodPressureRecord record, RangeLimits limits) {
   MetricBandTone? worst;
   void consider(MetricBandTone tone) {
     if (worst == null || _toneRank(tone) > _toneRank(worst!)) {
@@ -713,26 +725,17 @@ MetricBandTone? _classify(BloodPressureRecord record) {
   }
 
   final sys = record.sys?.mmHg;
-  if (sys != null) {
-    if (sys < 120) {
-      consider(MetricBandTone.typical);
-    } else if (sys < 130) {
-      consider(MetricBandTone.elevated);
-    } else {
-      consider(MetricBandTone.high);
-    }
-  }
+  if (sys != null) consider(_pressureTone(limits.systolicBand(sys)));
   final dia = record.dia?.mmHg;
-  if (dia != null) {
-    consider(dia < 80 ? MetricBandTone.typical : MetricBandTone.high);
-  }
+  if (dia != null) consider(_pressureTone(limits.diastolicBand(dia)));
   return worst;
 }
 
 class _ClassificationChart extends StatelessWidget {
-  const _ClassificationChart({required this.records});
+  const _ClassificationChart({required this.records, required this.limits});
 
   final List<BloodPressureRecord> records;
+  final RangeLimits limits;
 
   @override
   Widget build(BuildContext context) {
@@ -743,7 +746,7 @@ class _ClassificationChart extends StatelessWidget {
     };
     var total = 0;
     for (final record in records) {
-      final tone = _classify(record);
+      final tone = _classify(record, limits);
       if (tone == null) continue;
       counts[tone] = counts[tone]! + 1;
       total++;

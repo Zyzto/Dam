@@ -40,7 +40,7 @@ class BleLaunchSyncCard extends StatelessWidget {
         && !paused
         && result != null;
     return Card(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      margin: const EdgeInsets.only(top: 8),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 8, 16),
         child: Column(

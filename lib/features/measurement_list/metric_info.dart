@@ -1,6 +1,7 @@
 import 'package:blood_pressure_app/domain/domain.dart';
 import 'package:blood_pressure_app/model/blood_pressure/pressure_unit.dart';
 import 'package:blood_pressure_app/model/body_sex.dart';
+import 'package:blood_pressure_app/model/range_limits.dart';
 import 'package:blood_pressure_app/model/weight_unit.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -159,6 +160,7 @@ class MetricInfo {
     PressureUnit pressureUnit = PressureUnit.mmHg,
     int sysWarn = 120,
     int diaWarn = 80,
+    RangeLimits limits = RangeLimits.standard,
   }) {
     switch (kind) {
       case MetricKind.weight:
@@ -167,9 +169,10 @@ class MetricInfo {
           formattedValue: formattedValue,
           heightCm: heightCm,
           weightUnit: weightUnit,
+          limits: limits,
         );
       case MetricKind.bmi:
-        return _bmi(current, formattedValue);
+        return _bmi(current, formattedValue, limits);
       case MetricKind.bodyFat:
         return _bodyFat(current, formattedValue, sex);
       case MetricKind.muscle:
@@ -208,9 +211,9 @@ class MetricInfo {
           bands: const [],
         );
       case MetricKind.sys:
-        return _sys(current, formattedValue, pressureUnit, sysWarn);
+        return _sys(current, formattedValue, pressureUnit, sysWarn, limits);
       case MetricKind.dia:
-        return _dia(current, formattedValue, pressureUnit, diaWarn);
+        return _dia(current, formattedValue, pressureUnit, diaWarn, limits);
       case MetricKind.pulse:
         return _pulse(current, formattedValue);
     }
@@ -221,24 +224,54 @@ class MetricInfo {
     required String formattedValue,
     required double? heightCm,
     required WeightUnit weightUnit,
+    required RangeLimits limits,
   }) {
     final bands = <MetricRangeBand>[];
     double? barMin;
     double? barMax;
     if (heightCm != null && heightCm > 0) {
+      final cut = limits.valid;
       final heightM = heightCm / 100;
-      final low = weightUnit.extract(Weight.kg(18.5 * heightM * heightM));
-      final high = weightUnit.extract(Weight.kg(24.9 * heightM * heightM));
-      bands.add(MetricRangeBand(
-        id: 'healthy',
-        label: 'metricHealthyWeight'.tr(),
-        tone: MetricBandTone.typical,
-        interval: '${_format(low)}–${_format(high)} ${weightUnit.displayName}',
-        min: low,
-        maxExclusive: high + 0.05,
-      ));
-      barMin = low * 0.7;
-      barMax = high * 1.4;
+      final unit = weightUnit.displayName;
+      double at(double bmi) =>
+          weightUnit.extract(Weight.kg(bmi * heightM * heightM));
+      final normal = at(cut.bmiNormalMin);
+      final overweight = at(cut.bmiOverweightMin);
+      final obese = at(cut.bmiObeseMin);
+      bands.addAll([
+        MetricRangeBand(
+          id: 'underweight',
+          label: 'metricRangeUnderweight'.tr(),
+          tone: MetricBandTone.elevated,
+          interval: '< ${_format(normal)} $unit',
+          maxExclusive: normal,
+        ),
+        MetricRangeBand(
+          id: 'normal',
+          label: 'metricRangeNormal'.tr(),
+          tone: MetricBandTone.typical,
+          interval: '${_format(normal)}–${_format(overweight - 0.1)} $unit',
+          min: normal,
+          maxExclusive: overweight,
+        ),
+        MetricRangeBand(
+          id: 'overweight',
+          label: 'metricRangeOverweight'.tr(),
+          tone: MetricBandTone.elevated,
+          interval: '${_format(overweight)}–${_format(obese - 0.1)} $unit',
+          min: overweight,
+          maxExclusive: obese,
+        ),
+        MetricRangeBand(
+          id: 'obesity',
+          label: 'metricRangeObesity'.tr(),
+          tone: MetricBandTone.high,
+          interval: '≥ ${_format(obese)} $unit',
+          min: obese,
+        ),
+      ]);
+      barMin = normal * 0.7;
+      barMax = obese * 1.2;
     }
     return MetricInfo(
       kind: MetricKind.weight,
@@ -256,48 +289,54 @@ class MetricInfo {
   static MetricInfo _bmi(
     double current,
     String formattedValue,
-  ) => MetricInfo(
-    kind: MetricKind.bmi,
-    title: 'bmi'.tr(),
-    description: 'metricInfoBmiDesc'.tr(),
-    formattedValue: formattedValue,
-    icon: Icons.monitor_heart_outlined,
-    current: current,
-    barMin: 12,
-    barMax: 40,
-    bands: [
-      MetricRangeBand(
-        id: 'underweight',
-        label: 'metricRangeUnderweight'.tr(),
-        tone: MetricBandTone.elevated,
-        interval: '< 18.5',
-        maxExclusive: 18.5,
-      ),
-      MetricRangeBand(
-        id: 'normal',
-        label: 'metricRangeNormal'.tr(),
-        tone: MetricBandTone.typical,
-        interval: '18.5–24.9',
-        min: 18.5,
-        maxExclusive: 25,
-      ),
-      MetricRangeBand(
-        id: 'overweight',
-        label: 'metricRangeOverweight'.tr(),
-        tone: MetricBandTone.elevated,
-        interval: '25–29.9',
-        min: 25,
-        maxExclusive: 30,
-      ),
-      MetricRangeBand(
-        id: 'obesity',
-        label: 'metricRangeObesity'.tr(),
-        tone: MetricBandTone.high,
-        interval: '≥ 30',
-        min: 30,
-      ),
-    ],
-  );
+    RangeLimits limits,
+  ) {
+    final cut = limits.valid;
+    return MetricInfo(
+      kind: MetricKind.bmi,
+      title: 'bmi'.tr(),
+      description: 'metricInfoBmiDesc'.tr(),
+      formattedValue: formattedValue,
+      icon: Icons.monitor_heart_outlined,
+      current: current,
+      barMin: (cut.bmiNormalMin - 6).clamp(8, 20),
+      barMax: cut.bmiObeseMin + 10,
+      bands: [
+        MetricRangeBand(
+          id: 'underweight',
+          label: 'metricRangeUnderweight'.tr(),
+          tone: MetricBandTone.elevated,
+          interval: '< ${_format(cut.bmiNormalMin)}',
+          maxExclusive: cut.bmiNormalMin,
+        ),
+        MetricRangeBand(
+          id: 'normal',
+          label: 'metricRangeNormal'.tr(),
+          tone: MetricBandTone.typical,
+          interval:
+              '${_format(cut.bmiNormalMin)}–${_format(cut.bmiOverweightMin - 0.1)}',
+          min: cut.bmiNormalMin,
+          maxExclusive: cut.bmiOverweightMin,
+        ),
+        MetricRangeBand(
+          id: 'overweight',
+          label: 'metricRangeOverweight'.tr(),
+          tone: MetricBandTone.elevated,
+          interval:
+              '${_format(cut.bmiOverweightMin)}–${_format(cut.bmiObeseMin - 0.1)}',
+          min: cut.bmiOverweightMin,
+          maxExclusive: cut.bmiObeseMin,
+        ),
+        MetricRangeBand(
+          id: 'obesity',
+          label: 'metricRangeObesity'.tr(),
+          tone: MetricBandTone.high,
+          interval: '≥ ${_format(cut.bmiObeseMin)}',
+          min: cut.bmiObeseMin,
+        ),
+      ],
+    );
+  }
 
   static MetricInfo _bodyFat(
     double current,
@@ -520,9 +559,13 @@ class MetricInfo {
     String formattedValue,
     PressureUnit unit,
     int sysWarn,
+    RangeLimits limits,
   ) {
-    final n120 = _pressure(120, unit);
-    final n130 = _pressure(130, unit);
+    final cut = limits.valid;
+    final elevated = _pressure(cut.sysElevatedMmHg, unit);
+    final high = _pressure(cut.sysHighMmHg, unit);
+    final belowHigh = _pressure(cut.sysHighMmHg - 1, unit);
+    final barFloor = cut.sysElevatedMmHg - 40;
     final digits = unit == PressureUnit.kPa ? 1 : 0;
     final suffix = unit == PressureUnit.kPa ? ' kPa' : '';
     return MetricInfo(
@@ -532,31 +575,31 @@ class MetricInfo {
       formattedValue: formattedValue,
       icon: Icons.favorite_outline,
       current: current,
-      barMin: _pressure(80, unit),
-      barMax: _pressure(180, unit),
+      barMin: _pressure(barFloor < 40 ? 40 : barFloor, unit),
+      barMax: _pressure(cut.sysHighMmHg + 50, unit),
       warnLabel: 'metricWarnAt'.tr(namedArgs: {'value': _format(_pressure(sysWarn, unit), digits) + suffix}),
       bands: [
         MetricRangeBand(
           id: 'normal',
           label: 'metricRangeNormal'.tr(),
           tone: MetricBandTone.typical,
-          interval: '< ${_format(n120, digits)}$suffix',
-          maxExclusive: n120,
+          interval: '< ${_format(elevated, digits)}$suffix',
+          maxExclusive: elevated,
         ),
         MetricRangeBand(
           id: 'elevated',
           label: 'metricRangeElevated'.tr(),
           tone: MetricBandTone.elevated,
-          interval: '${_format(n120, digits)}–${_format(_pressure(129, unit), digits)}$suffix',
-          min: n120,
-          maxExclusive: n130,
+          interval: '${_format(elevated, digits)}–${_format(belowHigh, digits)}$suffix',
+          min: elevated,
+          maxExclusive: high,
         ),
         MetricRangeBand(
           id: 'high',
           label: 'metricRangeHigh'.tr(),
           tone: MetricBandTone.high,
-          interval: '≥ ${_format(n130, digits)}$suffix',
-          min: n130,
+          interval: '≥ ${_format(high, digits)}$suffix',
+          min: high,
         ),
       ],
     );
@@ -567,8 +610,11 @@ class MetricInfo {
     String formattedValue,
     PressureUnit unit,
     int diaWarn,
+    RangeLimits limits,
   ) {
-    final n80 = _pressure(80, unit);
+    final cut = limits.valid;
+    final high = _pressure(cut.diaHighMmHg, unit);
+    final barFloor = cut.diaHighMmHg - 40;
     final digits = unit == PressureUnit.kPa ? 1 : 0;
     final suffix = unit == PressureUnit.kPa ? ' kPa' : '';
     return MetricInfo(
@@ -578,8 +624,8 @@ class MetricInfo {
       formattedValue: formattedValue,
       icon: Icons.favorite_outline,
       current: current,
-      barMin: _pressure(40, unit),
-      barMax: _pressure(120, unit),
+      barMin: _pressure(barFloor < 30 ? 30 : barFloor, unit),
+      barMax: _pressure(cut.diaHighMmHg + 40, unit),
       warnLabel: 'metricWarnAt'.tr(namedArgs: {
         'value': '${_format(_pressure(diaWarn, unit), digits)}$suffix',
       }),
@@ -588,15 +634,15 @@ class MetricInfo {
           id: 'normal',
           label: 'metricRangeNormal'.tr(),
           tone: MetricBandTone.typical,
-          interval: '< ${_format(n80, digits)}$suffix',
-          maxExclusive: n80,
+          interval: '< ${_format(high, digits)}$suffix',
+          maxExclusive: high,
         ),
         MetricRangeBand(
           id: 'high',
           label: 'metricRangeHigh'.tr(),
           tone: MetricBandTone.high,
-          interval: '≥ ${_format(n80, digits)}$suffix',
-          min: n80,
+          interval: '≥ ${_format(high, digits)}$suffix',
+          min: high,
         ),
       ],
     );

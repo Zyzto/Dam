@@ -67,6 +67,7 @@ Future<void> main() async {
           path: 'assets/translations',
           supportedLocales: appSupportedLocales,
           fallbackLocale: const Locale('en'),
+          useFallbackTranslations: true,
           child: ProviderScope(
             overrides: [
               if (settings != null)

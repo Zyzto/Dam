@@ -422,6 +422,7 @@ Future<Widget> materialApp(
   Map<String, Widget Function(BuildContext)> routes = const {},
   List overrides = const [],
   Locale locale = const Locale('en'),
+  MockHealthStore? store,
 }) async {
   final merged = settings ?? hcSettings ?? TestSettingsSeed();
   if (hcSettings != null && settings != null) {
@@ -437,7 +438,7 @@ Future<Widget> materialApp(
   excelExportSettings ??= ExcelExportSettings();
   intervallStoreManager ??= IntervalStoreManager();
   exportColumnsManager ??= ExportColumnsManager();
-  final db = MockHealthStore();
+  final db = store ?? MockHealthStore();
   return _easyApp(
     child: child,
     settings: edadat,

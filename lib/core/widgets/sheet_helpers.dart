@@ -1,4 +1,5 @@
 import 'package:blood_pressure_app/core/layout/responsive_sheet.dart';
+import 'package:blood_pressure_app/core/widgets/defer_until_sheet_settled.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:safaeh/safaeh.dart';
@@ -26,6 +27,9 @@ class SheetPickerOption<T> {
 typedef SheetAction<T> = SafaehAction<T>;
 
 /// Shows a single-select list using the same adaptive modal as other sheets.
+///
+/// Set [deferUntilSettled] for a long list. The rows mount on the frame after
+/// the open animation, with a skeleton holding the sheet's size meanwhile.
 Future<T?> showOptionPickerSheet<T>(
   BuildContext context, {
   required String title,
@@ -34,39 +38,52 @@ Future<T?> showOptionPickerSheet<T>(
   double? maxHeight,
   bool centerInFullViewport = true,
   Widget? header,
+  bool deferUntilSettled = false,
 }) {
   final trailingByValue = {
     for (final option in options) option.value: option.trailing,
   };
+  final picker = SafaehTilePickerBody<T>(
+    showTitleInBody: false,
+    header: header,
+    options: [
+      for (final option in options)
+        SafaehTileOption<T>(
+          value: option.value,
+          label: option.label,
+          subtitle: option.subtitle,
+          leading: option.leading,
+          enabled: option.enabled,
+        ),
+    ],
+    selected: selected,
+    tileBuilder: (ctx, option, isSelected) => SafaehLabeledOptionTile(
+      title: option.label,
+      subtitle: option.subtitle,
+      leading: option.leading,
+      trailing: trailingByValue[option.value],
+      enabled: option.enabled,
+      selected: isSelected,
+      onTap: null,
+    ),
+  );
   return showResponsiveSheet<T>(
     context: context,
     title: title,
     maxHeight: maxHeight ?? MediaQuery.sizeOf(context).height * 0.75,
     centerInFullViewport: centerInFullViewport,
-    child: SafaehTilePickerBody<T>(
-      showTitleInBody: false,
-      header: header,
-      options: [
-        for (final option in options)
-          SafaehTileOption<T>(
-            value: option.value,
-            label: option.label,
-            subtitle: option.subtitle,
-            leading: option.leading,
-            enabled: option.enabled,
-          ),
-      ],
-      selected: selected,
-      tileBuilder: (ctx, option, isSelected) => SafaehLabeledOptionTile(
-        title: option.label,
-        subtitle: option.subtitle,
-        leading: option.leading,
-        trailing: trailingByValue[option.value],
-        enabled: option.enabled,
-        selected: isSelected,
-        onTap: null,
-      ),
-    ),
+    child: deferUntilSettled
+        ? DeferUntilSheetSettled(
+            placeholder: SheetOptionSkeleton(
+              count: options.length,
+              twoLine: options.any(
+                (option) =>
+                    option.subtitle != null && option.subtitle!.isNotEmpty,
+              ),
+            ),
+            child: picker,
+          )
+        : picker,
   );
 }
 

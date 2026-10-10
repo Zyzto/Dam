@@ -52,24 +52,44 @@
 
 <div dir="ltr">
 <p align="center">
-
-  <img src="docs/screenshots/en-light-home.png" alt="Home" width="180" />
+  <img src="docs/screenshots/en-light-home.png" alt="Measurements" width="180" />
+  <img src="docs/screenshots/en-light-weight.png" alt="Weight" width="180" />
   <img src="docs/screenshots/en-light-stats.png" alt="Statistics" width="180" />
   <img src="docs/screenshots/en-light-add.png" alt="Add a reading" width="180" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/en-light-today.png" alt="Today's medicines" width="180" />
+  <img src="docs/screenshots/en-light-reminders.png" alt="Medicine reminders" width="180" />
+  <img src="docs/screenshots/en-light-medications.png" alt="Medications" width="180" />
   <img src="docs/screenshots/en-light-settings.png" alt="Settings" width="180" />
-  
 </p>
 </div>
 
 <details>
+<summary>More</summary>
+<p align="center">
+  <img src="docs/screenshots/en-light-dose.png" alt="Next dose" width="180" />
+  <img src="docs/screenshots/en-light-stats-day.png" alt="Distribution and time of day" width="180" />
+</p>
+</details>
+
+<details>
 <summary>Dark theme</summary>
 <p align="center">
- 
-  <img src="docs/screenshots/en-dark-home.png" alt="Home — dark" width="180" />
+  <img src="docs/screenshots/en-dark-home.png" alt="Measurements — dark" width="180" />
+  <img src="docs/screenshots/en-dark-weight.png" alt="Weight — dark" width="180" />
   <img src="docs/screenshots/en-dark-stats.png" alt="Statistics — dark" width="180" />
   <img src="docs/screenshots/en-dark-add.png" alt="Add a reading — dark" width="180" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/en-dark-today.png" alt="Today's medicines — dark" width="180" />
+  <img src="docs/screenshots/en-dark-reminders.png" alt="Medicine reminders — dark" width="180" />
+  <img src="docs/screenshots/en-dark-medications.png" alt="Medications — dark" width="180" />
   <img src="docs/screenshots/en-dark-settings.png" alt="Settings — dark" width="180" />
-
+</p>
+<p align="center">
+  <img src="docs/screenshots/en-dark-dose.png" alt="Next dose — dark" width="180" />
+  <img src="docs/screenshots/en-dark-stats-day.png" alt="Distribution and time of day — dark" width="180" />
 </p>
 </details>
 ---
@@ -155,7 +175,7 @@ Compared to [derdilla/blood-pressure-monitor-fl](https://github.com/derdilla/blo
 | **Name** | Blood pressure monitor | Janan · الجَنَان |
 | **Android id** | `com.derdilla.bloodPressureApp` | `com.shenepoy.janan` |
 | **Install** | Play, F-Droid, GitHub | GitHub Releases + [Obtainium](https://github.com/ImranR98/Obtainium) |
-| **Version** | Semver `1.8.15+57` | CalVer `YY.0M.MICRO` (now `26.09.6+70`) |
+| **Version** | Semver `1.8.15+57` | CalVer `YY.0M.MICRO` (now `26.10.5+78`) |
 | **Layout** | `app/` plus workspace packages | One Flutter app at the repo root |
 
 **Added here**
@@ -167,7 +187,8 @@ Compared to [derdilla/blood-pressure-monitor-fl](https://github.com/derdilla/blo
 | **Automatic sync** | Import readings from saved Bluetooth monitors and supported scales when the app opens; status in the AppBar. |
 | **Eufy P1** | Weight plus optional impedance. Body composition when a body profile is set. P2 is unsupported. |
 | **Details** | A screen per blood-pressure or weight record (composition when ohms and a profile are present). |
-| **Home** | First-run onboarding, a latest-reading dashboard, and a bottom-nav shell (home / weight / stats / settings). |
+| **Home** | First-run onboarding, a latest-reading dashboard, and a bottom-nav shell (measurements / weight / stats / settings). |
+| **Medicine reminders** | Schedules, a countdown on the home button, and today's doses. The plan stays on the device. |
 
 **Internals that differ**
 
@@ -184,6 +205,7 @@ What upstream already has and this fork still has: manual input, graphs, CSV / P
 | | |
 |---|---|
 | **Blood pressure** | Systolic, diastolic, pulse, notes, and medicine doses. |
+| **Reminders** | Dose times, a home countdown, and a log of what was taken. |
 | **Weight** | Optional log, BMI, and body composition from a compatible scale. |
 | **Charts** | Trends, distribution, and time of day. |
 | **Bluetooth** | Automatically sync saved [monitors and scales](docs/bluetooth.md) on launch, or import a reading manually. |

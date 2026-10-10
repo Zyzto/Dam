@@ -64,6 +64,7 @@ class _DayLogPage extends ConsumerWidget {
                 onTaken: () => onTaken(dose),
                 onSkip: () => onSkip(dose),
                 onSnooze: () => onSnooze(dose),
+                onOpenTaken: () => _openTakenDoseEntry(context, ref, dose),
               );
             },
           ),

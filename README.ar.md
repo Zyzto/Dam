@@ -52,21 +52,47 @@
 
 <div dir="ltr">
 <p align="center">
-  <img src="docs/screenshots/ar-light-add.png" alt="إضافة قراءة" width="180" />
-  <img src="docs/screenshots/ar-light-home.png" alt="الرئيسية" width="180" />
-  <img src="docs/screenshots/ar-light-settings.png" alt="الإعدادات" width="180" />
+  <img src="docs/screenshots/ar-light-home.png" alt="القياسات" width="180" />
+  <img src="docs/screenshots/ar-light-weight.png" alt="الوزن" width="180" />
   <img src="docs/screenshots/ar-light-stats.png" alt="الإحصاءات" width="180" />
+  <img src="docs/screenshots/ar-light-add.png" alt="إضافة قراءة" width="180" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/ar-light-today.png" alt="أدوية اليوم" width="180" />
+  <img src="docs/screenshots/ar-light-reminders.png" alt="تذكيرات الأدوية" width="180" />
+  <img src="docs/screenshots/ar-light-medications.png" alt="الأدوية" width="180" />
+  <img src="docs/screenshots/ar-light-settings.png" alt="الإعدادات" width="180" />
 </p>
 </div>
+
+<details>
+<summary>المزيد</summary>
+<div dir="ltr">
+<p align="center">
+  <img src="docs/screenshots/ar-light-dose.png" alt="الجرعة التالية" width="180" />
+  <img src="docs/screenshots/ar-light-stats-day.png" alt="التوزيع ووقت اليوم" width="180" />
+</p>
+</div>
+</details>
 
 <details>
 <summary>السمة الداكنة</summary>
 <div dir="ltr">
 <p align="center">
-  <img src="docs/screenshots/ar-dark-add.png" alt="إضافة قراءة — داكن" width="180" />
-  <img src="docs/screenshots/ar-dark-home.png" alt="الرئيسية — داكن" width="180" />
-  <img src="docs/screenshots/ar-dark-settings.png" alt="الإعدادات — داكن" width="180" />
+  <img src="docs/screenshots/ar-dark-home.png" alt="القياسات — داكن" width="180" />
+  <img src="docs/screenshots/ar-dark-weight.png" alt="الوزن — داكن" width="180" />
   <img src="docs/screenshots/ar-dark-stats.png" alt="الإحصاءات — داكن" width="180" />
+  <img src="docs/screenshots/ar-dark-add.png" alt="إضافة قراءة — داكن" width="180" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/ar-dark-today.png" alt="أدوية اليوم — داكن" width="180" />
+  <img src="docs/screenshots/ar-dark-reminders.png" alt="تذكيرات الأدوية — داكن" width="180" />
+  <img src="docs/screenshots/ar-dark-medications.png" alt="الأدوية — داكن" width="180" />
+  <img src="docs/screenshots/ar-dark-settings.png" alt="الإعدادات — داكن" width="180" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/ar-dark-dose.png" alt="الجرعة التالية — داكن" width="180" />
+  <img src="docs/screenshots/ar-dark-stats-day.png" alt="التوزيع ووقت اليوم — داكن" width="180" />
 </p>
 </div>
 </details>
@@ -170,7 +196,7 @@ flutter build apk
 | **الاسم** | Blood pressure monitor | الجَنَان · Janan |
 | **معرّف أندرويد** | <span dir="ltr"><code>com.derdilla.bloodPressureApp</code></span> | <span dir="ltr"><code>com.shenepoy.janan</code></span> |
 | **التثبيت** | بلاي، إف-درويد، GitHub | إصدارات GitHub و[Obtainium](https://github.com/ImranR98/Obtainium) |
-| **الإصدار** | Semver <span dir="ltr"><code>1.8.15+57</code></span> | CalVer <span dir="ltr"><code>YY.0M.MICRO</code></span> (الآن <span dir="ltr"><code>26.08.5+63</code></span>) |
+| **الإصدار** | Semver <span dir="ltr"><code>1.8.15+57</code></span> | CalVer <span dir="ltr"><code>YY.0M.MICRO</code></span> (الآن <span dir="ltr"><code>26.10.5+78</code></span>) |
 | **البنية** | مجلد <span dir="ltr"><code>app/</code></span> وحزم مساحة عمل | تطبيق Flutter واحد في جذر المستودع |
 
 **ما أُضيف هنا**
@@ -182,7 +208,8 @@ flutter build apk
 | **مزامنة عند الفتح** | سحب من جهاز محفوظ عند التشغيل؛ الحالة في شريط التطبيق. |
 | **Eufy P1** | وزن ومعاوقة اختيارية. تركيب الجسم إن وُجد ملف شخصي. P2 غير مدعوم. |
 | **التفاصيل** | شاشة لكل سجل ضغط أو وزن (والتركيب إن وُجدت أوم وملف شخصي). |
-| **الرئيسية** | جولة أول تشغيل، لوحة لآخر قراءة، وشريط تنقّل (الرئيسية / الوزن / الإحصاءات / الإعدادات). |
+| **الرئيسية** | جولة أول تشغيل، لوحة لآخر قراءة، وشريط تنقّل (القياسات / الوزن / الإحصاءات / الإعدادات). |
+| **تذكير الدواء** | مواعيد، عدّاد على زر الرئيسية، وجرعات اليوم. الخطة تبقى على الجهاز. |
 
 **اختلافات داخلية**
 
@@ -199,6 +226,7 @@ flutter build apk
 | | |
 |---|---|
 | **ضغط الدم** | الانقباضي، الانبساطي، النبض، ملاحظات، وجرعات الدواء. |
+| **التذكير** | أوقات الجرعات، عدّاد على الرئيسية، وسجل ما أُخذ. |
 | **الوزن** | سجل اختياري، مؤشر كتلة الجسم، وتركيب الجسم من ميزان متوافق. |
 | **الرسوم** | اتجاهات، توزيع، ووقت اليوم. |
 | **بلوتوث** | سحب من [جهاز قياس أو ميزان](docs/bluetooth.md). |

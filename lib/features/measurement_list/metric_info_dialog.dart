@@ -24,6 +24,7 @@ Future<void> showMetricInfo(
     pressureUnit: settings.preferredPressureUnit,
     sysWarn: settings.sysWarn,
     diaWarn: settings.diaWarn,
+    limits: settings.rangeLimits,
   );
   return showMetricInfoDialog(context, info);
 }

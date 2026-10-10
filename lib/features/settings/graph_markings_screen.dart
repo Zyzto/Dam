@@ -2,83 +2,76 @@ import 'package:blood_pressure_app/components/color_picker.dart';
 import 'package:blood_pressure_app/components/input_dialog.dart';
 import 'package:blood_pressure_app/features/settings/app_settings.dart';
 import 'package:blood_pressure_app/features/settings/registry.dart';
+import 'package:blood_pressure_app/features/settings/settings_subpage.dart';
 import 'package:blood_pressure_app/model/horizontal_graph_line.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_settings_framework/flutter_settings_framework.dart';
 
 class GraphMarkingsScreen extends ConsumerWidget {
   const GraphMarkingsScreen({super.key});
 
-  // TODO: consider adding fullscreen dialog for adding markings (like medicine)
-  // IMPORTANT: When adding more option, like vertical lines, add navigation bar
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    appBar: AppBar(forceMaterialTransparency: true),
-    body: Center(
-      child: Builder(
-        builder: (context) {
-          final settings = ref.watch(appSettingsProvider);
-          final lines = settings.horizontalGraphLines.toList();
-          return ListView.builder(
-            itemCount: lines.length + 2, // support first and last row
-            itemBuilder: (context, i) {
-              if (i == 0) {
-                // first row
-                return Container(
-                  padding: const EdgeInsets.all(10),
-                  child: DefaultTextStyle.merge(
-                    child: Text('horizontalLines'.tr()),
-                    style: Theme.of(context).textTheme.headlineLarge,
-                  ),
-                );
-              }
-              if (i > lines.length) {
-                // last row
-                return ListTile(
-                  leading: const Icon(Icons.add),
-                  title: Text('addLine'.tr()),
-                  onTap: () async {
-                    final color = await showConcreteColorPickerSheet(
-                      context,
-                      availableColors: [
-                        for (final value in appColorOptions) Color(value),
-                      ],
-                    );
-                    if (!context.mounted) return;
-                    final height = await showNumberInputDialog(
-                      context,
-                      hintText: 'linePositionY'.tr(),
-                    );
-
-                    if (color == null || height == null) return;
-                    lines.add(HorizontalGraphLine(color, height.round()));
-                    await ref.writeHorizontalGraphLines(lines);
-                  },
-                );
-              }
-              return ListTile(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(appSettingsProvider);
+    final lines = settings.horizontalGraphLines.toList();
+    return SettingsSubpage(
+      title: Text('customGraphMarkings'.tr()),
+      children: [
+        SettingsPageCard(
+          sectionId: 'graph-markings',
+          title: 'horizontalLines'.tr(),
+          icon: Icons.legend_toggle_outlined,
+          children: [
+            for (var i = 0; i < lines.length; i++)
+              ListTile(
                 leading: Container(
-                  width: 40.0,
-                  height: 40.0,
+                  width: 24,
+                  height: 24,
                   decoration: BoxDecoration(
-                    color: lines[i - 1].color,
+                    color: lines[i].color,
                     shape: BoxShape.circle,
                   ),
                 ),
-                title: Text(lines[i - 1].height.toString()),
+                title: Text(lines[i].height.toString()),
                 trailing: IconButton(
-                  icon: const Icon(Icons.delete),
+                  icon: const Icon(Icons.delete_outline),
                   onPressed: () async {
-                    lines.removeAt(i - 1);
-                    await ref.writeHorizontalGraphLines(lines);
+                    final next = [...lines]..removeAt(i);
+                    await ref.writeHorizontalGraphLines(next);
                   },
                 ),
-              );
-            },
-          );
-        },
-      ),
-    ),
-  );
+              ),
+            ActionSettingsTile(
+              leading: const Icon(Icons.add),
+              title: Text('addLine'.tr()),
+              onTap: () => _addLine(context, ref, lines),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _addLine(
+    BuildContext context,
+    WidgetRef ref,
+    List<HorizontalGraphLine> lines,
+  ) async {
+    final color = await showConcreteColorPickerSheet(
+      context,
+      availableColors: [for (final value in appColorOptions) Color(value)],
+    );
+    if (!context.mounted) return;
+    final height = await showNumberInputDialog(
+      context,
+      hintText: 'linePositionY'.tr(),
+    );
+    if (color == null || height == null) return;
+    await ref.writeHorizontalGraphLines([
+      ...lines,
+      HorizontalGraphLine(color, height.round()),
+    ]);
+  }
 }

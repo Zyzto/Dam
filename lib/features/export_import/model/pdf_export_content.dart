@@ -7,6 +7,7 @@ import 'package:blood_pressure_app/l10n/western_digits.dart';
 import 'package:blood_pressure_app/model/blood_pressure/pressure_unit.dart';
 import 'package:blood_pressure_app/model/blood_pressure_analyzer.dart';
 import 'package:blood_pressure_app/model/combined_entry.dart';
+import 'package:blood_pressure_app/model/range_limits.dart';
 import 'package:blood_pressure_app/model/weight_unit.dart';
 import 'package:easy_localization/easy_localization.dart';
 
@@ -110,6 +111,7 @@ class PdfExportContent {
     required PressureUnit pressureUnit,
     required WeightUnit weightUnit,
     required List<ExportColumn> columns,
+    RangeLimits limits = RangeLimits.standard,
   }) {
     final newestFirst = List<CombinedEntry>.of(entries)
       ..sort((a, b) => b.time.compareTo(a.time));
@@ -127,6 +129,7 @@ class PdfExportContent {
         newestFirst,
         pressureUnit,
         dateFormatter,
+        limits,
       ),
       weightSeries: _weightSeries(newestFirst, weightUnit),
       medicineSeries: _medicineSeries(newestFirst),
@@ -205,6 +208,7 @@ PdfExportStatistics _statistics(
   List<CombinedEntry> newestFirst,
   PressureUnit pressureUnit,
   DateFormat dateFormatter,
+  RangeLimits limits,
 ) {
   final period = snapshot.period;
   final measurementsPerDay = _averageMeasurementsPerDay(period);
@@ -231,8 +235,8 @@ PdfExportStatistics _statistics(
             sys: _pdfPressure(latestEntry.sys, pressureUnit),
             dia: _pdfPressure(latestEntry.dia, pressureUnit),
             pul: _pdfNumber(latestEntry.pul?.toDouble()),
-            sysBand: _systolicBand(latestEntry.sys),
-            diaBand: _diastolicBand(latestEntry.dia),
+            sysBand: _systolicBand(latestEntry.sys, limits),
+            diaBand: _diastolicBand(latestEntry.dia, limits),
           ),
     highest: _extremeReading(
       newestFirst,
@@ -295,20 +299,21 @@ PdfExportLatestReading? _extremeReading(
   );
 }
 
-String? _systolicBand(Pressure? pressure) {
+String? _systolicBand(Pressure? pressure, RangeLimits limits) {
   if (pressure == null) return null;
-  final value = pressure.mmHg;
-  if (value < 120) return 'metricRangeNormal'.tr();
-  if (value < 130) return 'metricRangeElevated'.tr();
-  return 'metricRangeHigh'.tr();
+  return _pressureBandLabel(limits.systolicBand(pressure.mmHg));
 }
 
-String? _diastolicBand(Pressure? pressure) {
+String? _diastolicBand(Pressure? pressure, RangeLimits limits) {
   if (pressure == null) return null;
-  return pressure.mmHg < 80
-      ? 'metricRangeNormal'.tr()
-      : 'metricRangeHigh'.tr();
+  return _pressureBandLabel(limits.diastolicBand(pressure.mmHg));
 }
+
+String _pressureBandLabel(PressureBand band) => switch (band) {
+  PressureBand.normal => 'metricRangeNormal'.tr(),
+  PressureBand.elevated => 'metricRangeElevated'.tr(),
+  PressureBand.high => 'metricRangeHigh'.tr(),
+};
 
 PdfWeightSeries? _weightSeries(
   List<CombinedEntry> newestFirst,

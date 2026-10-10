@@ -64,6 +64,7 @@ class LatestReadingCard extends ConsumerWidget {
             pressureUnit: unit,
             sysWarn: settings.sysWarn,
             diaWarn: settings.diaWarn,
+            limits: settings.rangeLimits,
           );
 
     final latestIndex = entriesNewestFirst.indexOf(entry);
@@ -164,6 +165,7 @@ class LatestReadingCard extends ConsumerWidget {
       pressureUnit: settings.preferredPressureUnit,
       sysWarn: settings.sysWarn,
       diaWarn: settings.diaWarn,
+      limits: settings.rangeLimits,
     );
   }
 }

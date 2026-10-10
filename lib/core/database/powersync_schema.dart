@@ -42,6 +42,7 @@ const schema = Schema([
     Column.text('end_date'),
     Column.integer('active'),
     Column.integer('ended'),
+    Column.integer('shift_missed_doses'),
   ]),
   Table.localOnly('dose_occurrences', [
     Column.text('schedule_id'),

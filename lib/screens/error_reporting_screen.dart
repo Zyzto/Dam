@@ -65,6 +65,7 @@ class ErrorScreen extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
       title: 'Critical error',
       builder: (context, child) => SafaehFeedbackHost(
+        itemWidthBuilder: toastItemWidth,
         child: child ?? const SizedBox.shrink(),
       ),
       home: Scaffold(

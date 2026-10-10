@@ -1,3 +1,4 @@
+import 'package:blood_pressure_app/core/widgets/defer_until_sheet_settled.dart';
 import 'package:blood_pressure_app/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_settings_framework/safaeh.dart';
@@ -66,6 +67,39 @@ void main() {
     expect(find.text('English'), findsOneWidget);
     await tester.tap(find.text('English'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('language and time format lists wait out the sheet animation', (
+    tester,
+  ) async {
+    usePhoneTestSurface(tester);
+
+    await pumpApp(tester, await materialApp(const SettingsPage()));
+
+    await tester.tap(find.text('Language').last);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(sheetOptionSkeletonKey), findsOneWidget);
+    expect(find.text('العربية'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('العربية'), findsNothing);
+    await tester.pump();
+    expect(find.text('العربية'), findsOneWidget);
+
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Time format').last);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(sheetOptionSkeletonKey), findsOneWidget);
+    expect(find.text('MM/dd/yyyy h:mm a'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('MM/dd/yyyy h:mm a'), findsNothing);
+    await tester.pump();
+    expect(find.text('MM/dd/yyyy h:mm a'), findsOneWidget);
   });
 
   testWidgets('date format uses a Safaeh picker of presets', (tester) async {

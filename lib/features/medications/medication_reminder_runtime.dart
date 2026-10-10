@@ -372,6 +372,8 @@ class MedicationReminderRuntime {
       now: now,
       enabled: shiftMissedDoseTimes,
       grace: missedDoseShiftLimit,
+      movesTimes: (dose) =>
+          dose.schedule.movesAfterMissedDose(shiftMissedDoseTimes),
       followUpFrom: followUpFrom,
     );
     final known = <String, DoseOccurrence>{
@@ -597,6 +599,8 @@ class MedicationReminderRuntime {
       now: now,
       enabled: shiftMissedDoseTimes,
       grace: missedDoseShiftLimit,
+      movesTimes: (dose) =>
+          dose.schedule.movesAfterMissedDose(shiftMissedDoseTimes),
     );
     final open = [
       for (final occurrence in occurrences)
